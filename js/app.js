@@ -126,7 +126,7 @@
       kpiCard('Valor em Mercadoria', fmtBRL(totalMercadoria), `Transportado no período filtrado`, PALETTE.blue, kpiIcons.box),
       kpiCard('Peso Transportado', fmtNum(totalPeso) + ' kg', `≈ <b>${fmtNum(totalPeso/1000,1)} t</b> no período`, PALETTE.blue, kpiIcons.scale),
       kpiCard('Entregas Concluídas', `${fmtNum(totalRealizadas)} / ${fmtNum(totalEntregas)}`, `<b>${fmtNum(totalRetornadas)}</b> notas retornadas`, PALETTE.accent2, kpiIcons.check),
-      kpiCard('Taxa de Sucesso', fmtPct(taxaSucesso), `Realizadas sobre total programado`, PALETTE.accent2, kpiIcons.check),
+      kpiCard('Performance de Entrega', fmtPct(taxaSucesso), `Realizadas sobre total programado`, PALETTE.accent2, kpiIcons.check),
       kpiCard('% de Frete Médio', fmtPct(avgPctFrete), `Percentual médio sobre valor de mercadoria`, PALETTE.accent3, kpiIcons.percent),
       kpiCard('Quantidade de Volumes', fmtNum(totalVolumes), `Total transportado no período`, PALETTE.accent2, kpiIcons.package),
     ];
