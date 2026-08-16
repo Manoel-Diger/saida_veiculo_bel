@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instruções - Torre de Controle VitLog</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #080D16 0%, #0D1524 100%);
+            color: #E9EDF6;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #111A2B;
+            border: 1px solid #22304A;
+            border-radius: 14px;
+            padding: 40px;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #5B6EF5;
+        }
+        h2 {
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #34D399;
+        }
+        p {
+            color: #93A1BC;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .section {
+            background: #0D1524;
+            border-left: 3px solid #5B6EF5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .changes {
+            background: #111A2B;
+            border: 1px solid #22304A;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .change-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #22304A;
+        }
+        .change-item:last-child {
+            border-bottom: none;
+        }
+        .old-value {
+            color: #EF6B6B;
+            text-decoration: line-through;
+            font-size: 13px;
+        }
+        .new-value {
+            color: #34D399;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        code {
+            background: #16213A;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #38BDF8;
+            font-size: 12px;
+        }
+        .instruction-box {
+            background: #1A2537;
+            border-left: 4px solid #F5B94D;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .file-path {
+            color: #38BDF8;
+            font-family: 'JetBrains Mono', monospace;
+            background: #16213A;
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .highlight {
+            background: #F5B94D22;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        ul {
+            margin-left: 20px;
+            color: #93A1BC;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Alterações Realizadas no Dashboard VitLog</h1>
+        <p style="font-size: 14px; color: #5C6A85;">Data: 15/08/2026 | Torre de Controle - Saída de Veículos</p>
+
+        <div class="section">
+            <h2>📊 Alterações nos Cards de Indicadores (KPI)</h2>
+            <p>Os cards de indicadores foram modificados para refletir novas métricas operacionais:</p>
+            
+            <div class="changes">
+                <div class="change-item">
+                    <strong>Card #7 - Substituído:</strong>
+                    <div class="old-value">❌ Cumprimento de Meta</div>
+                    <div class="new-value">✅ % de Frete Médio</div>
+                    <p style="color: #93A1BC; font-size: 12px; margin-top: 5px;">Exibe o percentual médio do frete em relação ao valor de mercadoria transportada</p>
+                </div>
+                <div class="change-item">
+                    <strong>Card #8 - Substituído:</strong>
+                    <div class="old-value">❌ Ocorrências</div>
+                    <div class="new-value">✅ Quantidade de Volumes</div>
+                    <p style="color: #93A1BC; font-size: 12px; margin-top: 5px;">Exibe o total de volumes transportados no período filtrado</p>
+                </div>
+            </div>
+
+            <p><strong>Arquivo modificado:</strong> <span class="file-path">js/app.js</span></p>
+        </div>
+
+        <div class="section">
+            <h2>🎨 Sistema de Logo e Assets</h2>
+            <p>O projeto agora suporta uma estrutura de assets para a logo da VitLog:</p>
+            
+            <ul>
+                <li>✅ <strong>Pasta criada:</strong> <span class="file-path">assets/</span></li>
+                <li>✅ <strong>Logo esperada:</strong> <span class="file-path">assets/logo.png</span></li>
+                <li>✅ <strong>Instruções incluídas:</strong> <span class="file-path">assets/README.md</span></li>
+            </ul>
+
+            <div class="instruction-box">
+                <strong>⚠️ Próximo Passo - Adicione a Logo:</strong>
+                <p>Coloque o arquivo <span class="highlight">logo.png</span> (ou qualquer imagem PNG/SVG) na pasta <span class="file-path">assets/</span></p>
+                <p style="font-size: 12px; color: #93A1BC; margin-top: 10px;">Recomendações:</p>
+                <ul>
+                    <li>Formato: PNG ou SVG</li>
+                    <li>Dimensões: 256x256 pixels (quadrado)</li>
+                    <li>Fundo: Transparente (recomendado)</li>
+                    <li>Tamanho do arquivo: &lt; 100KB</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🖼️ Alterações na Imagem do Caminhão</h2>
+            <p>O ícone SVG do caminhão foi substituído por um sistema de imagem dinâmico:</p>
+            
+            <ul>
+                <li>✅ <strong>Header:</strong> Logo agora é carregada de <span class="file-path">assets/logo.png</span></li>
+                <li>✅ <strong>Footer:</strong> Logo também referencia o mesmo arquivo</li>
+                <li>✅ <strong>Responsivo:</strong> A imagem se ajusta automaticamente ao tamanho do container</li>
+            </ul>
+
+            <p><strong>Arquivos modificados:</strong></p>
+            <ul>
+                <li><span class="file-path">index.html</span> - Substituição do SVG por tag &lt;img&gt;</li>
+                <li><span class="file-path">css/styles.css</span> - Sem alterações (CSS já é compatível)</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>📁 Estrutura do Projeto Atualizada</h2>
+            <pre style="background: #16213A; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 12px; color: #38BDF8; font-family: 'JetBrains Mono';">
+project/
+├── index.html          (modificado)
+├── css/
+│   └── styles.css
+├── js/
+│   ├── app.js         (modificado)
+│   └── vendor/
+│       └── chart.umd.js
+├── data/
+│   └── dataset.js
+├── scripts/
+│   └── atualizar_dados.py
+└── assets/            (NOVO)
+    ├── logo.png       (coloque aqui a logo)
+    └── README.md      (instruções)
+            </pre>
+        </div>
+
+        <div class="section">
+            <h2>✨ Resumo das Mudanças</h2>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr style="background: #16213A; border-bottom: 1px solid #22304A;">
+                    <td style="padding: 10px;"><strong>Aspecto</strong></td>
+                    <td style="padding: 10px;"><strong>Antes</strong></td>
+                    <td style="padding: 10px;"><strong>Depois</strong></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #22304A;">
+                    <td style="padding: 10px;">Card #7 KPI</td>
+                    <td style="padding: 10px;">Cumprimento de Meta (%)</td>
+                    <td style="padding: 10px; color: #34D399;">% de Frete Médio</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #22304A;">
+                    <td style="padding: 10px;">Card #8 KPI</td>
+                    <td style="padding: 10px;">Ocorrências (count)</td>
+                    <td style="padding: 10px; color: #34D399;">Quantidade de Volumes</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #22304A;">
+                    <td style="padding: 10px;">Logo Header</td>
+                    <td style="padding: 10px;">SVG caminhão inline</td>
+                    <td style="padding: 10px; color: #34D399;">Imagem assets/logo.png</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #22304A;">
+                    <td style="padding: 10px;">Logo Footer</td>
+                    <td style="padding: 10px;">SVG caminhão inline</td>
+                    <td style="padding: 10px; color: #34D399;">Imagem assets/logo.png</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px;">Assets</td>
+                    <td style="padding: 10px;">Não existia</td>
+                    <td style="padding: 10px; color: #34D399;">Pasta assets/ criada</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section" style="border-left: 3px solid #34D399; background: #0D1524;">
+            <h2>🎯 Próximos Passos</h2>
+            <ol style="margin-left: 20px; color: #93A1BC;">
+                <li><strong style="color: #E9EDF6;">Coloque a logo da VitLog</strong> na pasta <span class="file-path">assets/logo.png</span></li>
+                <li><strong style="color: #E9EDF6;">Recarregue o dashboard</strong> no navegador (Ctrl+F5)</li>
+                <li><strong style="color: #E9EDF6;">Verifique os novos cards</strong> nas seções de Indicadores</li>
+                <li><strong style="color: #E9EDF6;">Teste os filtros</strong> para validar os cálculos</li>
+            </ol>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: #5C6A85; font-size: 12px;">
+            <p>Torre de Controle · VitLog Belém | Gerado em 15/08/2026</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -90,7 +90,9 @@
     check: '<path d="M9 12.5 11.3 15 16 9.5"/><circle cx="12" cy="12" r="9"/>',
     target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/>',
     alert: '<path d="M12 9v4.2M12 17h.01"/><path d="M10.3 3.9 1.9 18.3a1.6 1.6 0 0 0 1.4 2.4h17.4a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0Z"/>',
-    road: '<path d="M4 20 9 4h6l5 16M12 4v3M11 11h2M10 16h4"/>'
+    road: '<path d="M4 20 9 4h6l5 16M12 4v3M11 11h2M10 16h4"/>',
+    percent: '<circle cx="12" cy="12" r="9"/><path d="M9 9h.01M15 15h.01"/><path d="M15 9 9 15"/>',
+    package: '<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'
   };
 
   function kpiCard(label, value, sub, color, icon){
@@ -108,10 +110,12 @@
     const totalEntregas = sum(f,r=>r.entregas);
     const totalRealizadas = sum(f,r=>r.realizadas);
     const totalRetornadas = sum(f,r=>r.retornadas);
+    const totalVolumes = sum(f,r=>r.vols);
     const taxaSucesso = totalEntregas>0 ? totalRealizadas/totalEntregas : 0;
     const metaValidos = f.filter(r=>r.meta==='Atendeu a Meta' || r.meta==='Não Atendeu a Meta');
     const metaOk = metaValidos.filter(r=>r.meta==='Atendeu a Meta').length;
     const pctMeta = metaValidos.length>0 ? metaOk/metaValidos.length : 0;
+    const avgPctFrete = f.length > 0 ? sum(f, r=>r.pctFrete) / f.length : 0;
     const occ = occCounts(f);
     const kmValidos = f.filter(r=>r.kmDia>0);
     const totalKm = sum(kmValidos,r=>r.kmDia);
@@ -123,12 +127,8 @@
       kpiCard('Peso Transportado', fmtNum(totalPeso) + ' kg', `≈ <b>${fmtNum(totalPeso/1000,1)} t</b> no período`, PALETTE.blue, kpiIcons.scale),
       kpiCard('Entregas Concluídas', `${fmtNum(totalRealizadas)} / ${fmtNum(totalEntregas)}`, `<b>${fmtNum(totalRetornadas)}</b> notas retornadas`, PALETTE.accent2, kpiIcons.check),
       kpiCard('Taxa de Sucesso', fmtPct(taxaSucesso), `Realizadas sobre total programado`, PALETTE.accent2, kpiIcons.check),
-      kpiCard('Cumprimento de Meta', fmtPct(pctMeta), `${metaOk} de ${metaValidos.length} viagens dentro da meta`, pctMeta>=0.85?PALETTE.accent2:PALETTE.accent3, kpiIcons.target),
-      kpiCard('Ocorrências', fmtNum(occ.total),
-        occ.total===0 ? `Nenhuma pendência registrada` :
-        (occ.operational>0 ? `<b>${occ.operational}</b> operacional (falta de tempo) · <b>${occ.commercial}</b> comercial` : `Todas encaminhadas ao comercial`),
-        occ.operational>0 ? PALETTE.danger : (occ.total>0 ? PALETTE.accent3 : PALETTE.accent2),
-        kpiIcons.alert),
+      kpiCard('% de Frete Médio', fmtPct(avgPctFrete), `Percentual médio sobre valor de mercadoria`, PALETTE.accent3, kpiIcons.percent),
+      kpiCard('Quantidade de Volumes', fmtNum(totalVolumes), `Total transportado no período`, PALETTE.accent2, kpiIcons.package),
     ];
     document.getElementById('kpiGrid').innerHTML = cards.join('');
     document.getElementById('kpiSub').textContent = `${fmtDateFull(state.dataIni)} — ${fmtDateFull(state.dataFim)}`;
