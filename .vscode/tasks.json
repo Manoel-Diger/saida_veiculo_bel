@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Atualizar dados do dashboard",
+      "type": "shell",
+      "command": "python3 scripts/atualizar_dados.py",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "detail": "Lê Saida_BEL.xlsx e regrava data/dataset.js com os dados mais recentes."
+    }
+  ]
+}

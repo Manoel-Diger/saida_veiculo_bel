@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Torre de Controle · Saída de Veículos · VitLog Belém</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="js/vendor/chart.umd.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#F5F7FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5V9a1 1 0 0 1 1-1h9l4 4v4.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><circle cx="7.5" cy="17.5" r="1.6"/><circle cx="16.5" cy="17.5" r="1.6"/><path d="M13 8v4.5h5"/></svg>
+    </div>
+    <div class="brand-text">
+      <div class="eyebrow"><span class="live-dot"></span>Torre de Controle · Operações</div>
+      <h1>Saída de Veículos — VitLog Belém</h1>
+      <p id="periodSub">Carregando período de análise…</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <div class="clock-box">
+      <div class="clock-time" id="clockTime">--:--:--</div>
+      <div class="clock-label" id="lastUpdate">última atualização</div>
+    </div>
+    <button id="refreshBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v6h-6"/></svg>
+      <span id="refreshLabel">Atualizar Dados</span>
+    </button>
+  </div>
+</header>
+
+<div class="lane-divider"></div>
+
+<div class="ticker-wrap">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<main>
+
+  <section>
+    <div class="filters-bar">
+      <div class="filter-field">
+        <label>Período · de</label>
+        <input type="date" id="fDataIni">
+      </div>
+      <div class="filter-field">
+        <label>Período · até</label>
+        <input type="date" id="fDataFim">
+      </div>
+      <div class="filter-field">
+        <label>Motorista</label>
+        <select id="fMotorista"><option value="all">Todos</option></select>
+      </div>
+      <div class="filter-field">
+        <label>Cidade destino</label>
+        <select id="fCidade"><option value="all">Todas</option></select>
+      </div>
+      <div class="filter-field">
+        <label>Meta</label>
+        <select id="fMeta">
+          <option value="all">Todas</option>
+          <option value="Atendeu a Meta">Atendeu a meta</option>
+          <option value="Não Atendeu a Meta">Não atendeu a meta</option>
+        </select>
+      </div>
+      <button id="clearFilters">Limpar filtros</button>
+      <div class="filter-count" id="filterCount">— registros</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Indicadores <span>· Visão Geral</span></h2>
+      <div class="section-sub" id="kpiSub"></div>
+    </div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Desempenho Financeiro <span>&amp; Operacional</span></h2>
+      <div class="section-sub">Evolução diária do frete e cumprimento de meta</div>
+    </div>
+    <div class="charts-row">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Evolução do Frete<small>Valor faturado por dia de saída (R$)</small></div>
+        </div>
+        <div class="chart-box tall"><canvas id="chartFrete"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Cumprimento de Meta<small>Percentual de viagens no período</small></div>
+        </div>
+        <div class="chart-box tall"><canvas id="chartMeta"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Ranking &amp; Rotas <span>· Motoristas e Cidades</span></h2>
+      <div class="section-sub">Quem fatura mais e para onde vai a operação</div>
+    </div>
+    <div class="charts-row equal">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Frete por Motorista<small>Total faturado (R$) no período filtrado</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartMotorista"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Entregas por Cidade Destino<small>Realizadas vs. retornadas</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartCidade"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Carga &amp; Ocorrências <span>· Atenção Operacional</span></h2>
+      <div class="section-sub">Peso transportado e pontos de atenção nas viagens</div>
+    </div>
+    <div class="charts-row equal">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Peso Transportado por Motorista<small>Total em kg no período filtrado</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartPeso"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Ocorrências Registradas<small>Operacional (falta de tempo) vs. comercial, por motorista</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartOcorrencia"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Leitura da Operação <span>· Insights Automáticos</span></h2>
+    </div>
+    <div class="insight-grid" id="insightGrid"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Registros Detalhados <span>· Lançamentos de Saída</span></h2>
+      <div class="section-sub">Base: aba "jan_26 (2)" — clique nos cabeçalhos para ordenar</div>
+    </div>
+    <div class="table-panel">
+      <div class="table-toolbar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="tableSearch" placeholder="Buscar placa ou motorista…">
+        </div>
+        <div class="filter-count" id="tableCount"></div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th data-key="data">Data<span class="sort-arrow"></span></th>
+              <th data-key="placa">Placa<span class="sort-arrow"></span></th>
+              <th data-key="motorista">Motorista<span class="sort-arrow"></span></th>
+              <th data-key="cidade">Cidade<span class="sort-arrow"></span></th>
+              <th data-key="valorFrete">Frete (R$)<span class="sort-arrow"></span></th>
+              <th data-key="peso">Peso (kg)<span class="sort-arrow"></span></th>
+              <th data-key="entregas">Entregas<span class="sort-arrow"></span></th>
+              <th data-key="realizadas">Realiz.<span class="sort-arrow"></span></th>
+              <th data-key="retornadas">Retorn.<span class="sort-arrow"></span></th>
+              <th data-key="pctEntrega">% Entrega<span class="sort-arrow"></span></th>
+              <th data-key="meta">Meta<span class="sort-arrow"></span></th>
+              <th data-key="ocorrencia">Ocorrência<span class="sort-arrow"></span></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="pg-info" id="pgInfo"></div>
+        <div class="pg-btns">
+          <button id="pgPrev">← Anterior</button>
+          <button id="pgNext">Próxima →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="lane-divider"></div>
+
+<footer>
+  <div class="footer-left">
+    <div class="footer-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#F5F7FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16.5V9a1 1 0 0 1 1-1h9l4 4v4.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><circle cx="7.5" cy="17.5" r="1.6"/><circle cx="16.5" cy="17.5" r="1.6"/><path d="M13 8v4.5h5"/></svg>
+    </div>
+    <div class="footer-id">
+      <span class="f-brand">VitLog Belém</span>
+      <span class="f-sub">Torre de Controle · Saída de Veículos</span>
+    </div>
+  </div>
+  <div class="footer-meta">
+    <span class="footer-chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M9 13h6M9 17h6M9 9h1"/></svg>
+      Fonte: <b>Base Saída de Veículos · BEL</b>
+    </span>
+    <span class="footer-divider"></span>
+    <span class="footer-chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.6 3-6 7-6s7 2.4 7 6"/></svg>
+      Elaborado por <b>Manoel</b>
+    </span>
+    <span class="footer-divider"></span>
+    <span class="footer-chip" id="footGenerated">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
+      Gerado em <b id="footGeneratedDate">—</b>
+    </span>
+  </div>
+</footer>
+
+<div id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <span id="toastMsg">Dados atualizados</span>
+</div>
+
+<script src="data/dataset.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
