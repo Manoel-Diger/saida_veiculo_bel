@@ -132,7 +132,7 @@
     const metaValidos = f.filter(r=>r.meta==='Atendeu a Meta' || r.meta==='Não Atendeu a Meta');
     const metaOk = metaValidos.filter(r=>r.meta==='Atendeu a Meta').length;
     const pctMeta = metaValidos.length>0 ? metaOk/metaValidos.length : 0;
-    const avgPctFrete = f.length > 0 ? sum(f, r=>r.pctFrete) / f.length : 0;
+    const avgPctFrete = totalMercadoria > 0 ? totalFrete / totalMercadoria : 0;
     const occ = occCounts(f);
     const kmValidos = f.filter(r=>r.kmDia>0);
     const totalKm = sum(kmValidos,r=>r.kmDia);
@@ -144,7 +144,7 @@
       kpiCard('Peso Transportado', fmtNum(totalPeso) + ' kg', `≈ <b>${fmtNum(totalPeso/1000,1)} t</b> no período`, PALETTE.blue, kpiIcons.scale),
       kpiCard('Entregas Concluídas', `${fmtNum(totalRealizadas)} / ${fmtNum(totalEntregas)}`, `<b>${fmtNum(totalRetornadas)}</b> notas retornadas`, PALETTE.accent2, kpiIcons.check),
       kpiCard('Performance de Entrega', fmtPct(taxaSucesso), `Realizadas sobre total programado`, PALETTE.accent2, kpiIcons.check),
-      kpiCard('% de Frete Médio', fmtPct(avgPctFrete), `Percentual médio sobre valor de mercadoria`, PALETTE.accent3, kpiIcons.percent),
+      kpiCard('Frete sobre Mercadoria', fmtPct(avgPctFrete), `Percentual médio sobre valor de mercadoria`, PALETTE.accent3, kpiIcons.percent),
       kpiCard('Quantidade de Volumes', fmtNum(totalVolumes), `Total transportado no período`, PALETTE.accent2, kpiIcons.package),
     ];
     document.getElementById('kpiGrid').innerHTML = cards.join('');
@@ -163,7 +163,7 @@
     const totalEntregas = sum(f,r=>r.entregas);
     const totalRealizadas = sum(f,r=>r.realizadas);
     const taxaSucesso = totalEntregas>0 ? totalRealizadas/totalEntregas : 0;
-    const avgPctFrete = f.length > 0 ? sum(f, r=>r.pctFrete) / f.length : 0;
+    const avgPctFrete = totalMercadoria > 0 ? totalFrete / totalMercadoria : 0;
     const topMotorista = Object.entries(f.reduce((a,r)=>{a[r.motorista]=(a[r.motorista]||0)+r.valorFrete; return a;},{})).sort((a,b)=>b[1]-a[1])[0];
 
     const items = [
