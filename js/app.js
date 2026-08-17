@@ -289,7 +289,7 @@
       options:{
         responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtNum(c.parsed.y)+' kg' }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 } },
-        scales:{ x:{ grid:{display:false}, ticks:{ autoSkip:true, maxRotation:0 } }, y:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } } }
+        scales:{ x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } }, y:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } } }
       }
     });
   }
