@@ -343,7 +343,7 @@
     cards.push(`<div class="insight-card"><div class="i-label">Rota mais ativa</div><div class="i-text"><b>${topCidade[0]}</b> concentra o maior volume de entregas, com <b>${fmtNum(topCidade[1])}</b> realizadas no período.</div></div>`);
     cards.push(`<div class="insight-card ${pctMeta>=0.85?'good':'warn'}"><div class="i-label">Cumprimento de meta</div><div class="i-text"><b>${fmtPct(pctMeta)}</b> das viagens válidas atenderam a meta estabelecida${pctMeta<0.85?', abaixo do ideal — vale revisar rotas críticas.':'.'} </div></div>`);
     if(topOcc){
-      cards.push(`<div class="insight-card ${occAll.operational>0?'danger':'warn'}"><div class="i-label">Ponto de atenção</div><div class="i-text"><b>${occAll.total}</b> ocorrência(s) registradas no período — <b>${occAll.operational}</b> de origem operacional (falta de tempo) e <b>${occAll.commercial}</b> encaminhadas ao comercial. <b>${topOcc[0]}</b> concentra o maior número de casos (<b>${topOcc[1]}</b>).</div></div>`);
+      cards.push(`<div class="insight-card ${occAll.operational>0?'danger':'warn'}"><div class="i-label">Ponto de atenção</div><div class="i-text"><b>${occAll.total}</b> ocorrência(s) registradas no período, <b>${occAll.operational}</b> de origem operacional (falta de tempo) e <b>${occAll.commercial}</b> encaminhadas ao comercial. <b>${topOcc[0]}</b> concentra o maior número de casos (<b>${topOcc[1]}</b>).</div></div>`);
     } else {
       cards.push(`<div class="insight-card good"><div class="i-label">Ponto de atenção</div><div class="i-text">Nenhuma ocorrência registrada no período filtrado. Operação dentro da normalidade.</div></div>`);
     }
