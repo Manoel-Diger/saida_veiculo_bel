@@ -58,16 +58,32 @@
   const selCidade = document.getElementById('fCidade');
   cidades.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCidade.appendChild(o); });
 
-  const fDataIni = document.getElementById('fDataIni');
-  const fDataFim = document.getElementById('fDataFim');
-  fDataIni.value = minDate; fDataIni.min = minDate; fDataIni.max = maxDate;
-  fDataFim.value = maxDate; fDataFim.min = minDate; fDataFim.max = maxDate;
+  const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const mesesPresentes = [...new Set(RAW.map(r=>parseInt(r.data.slice(5,7),10)))].sort((a,b)=>a-b);
+  const anosPresentes = [...new Set(RAW.map(r=>r.data.slice(0,4)))].sort();
+
+  const selMes = document.getElementById('fMes');
+  (() => {
+    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Mês';
+    selMes.appendChild(oAll);
+    mesesPresentes.forEach(m=>{ const o=document.createElement('option'); o.value=String(m).padStart(2,'0'); o.textContent=MESES_PT[m-1]; selMes.appendChild(o); });
+    selMes.value='all';
+  })();
+
+  const selAno = document.getElementById('fAno');
+  (() => {
+    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Ano';
+    selAno.appendChild(oAll);
+    anosPresentes.forEach(a=>{ const o=document.createElement('option'); o.value=a; o.textContent=a; selAno.appendChild(o); });
+    selAno.value='all';
+  })();
 
   document.getElementById('periodSub').textContent =
     `Base "jan_26 (2)" · ${RAW.length} lançamentos · ${fmtDateFull(minDate)} a ${fmtDateFull(maxDate)}`;
 
   // ---------- State ----------
-  let state = { motorista:'all', cidade:'all', meta:'all', dataIni:minDate, dataFim:maxDate, busca:'' };
+  let state = { motorista:'all', cidade:'all', meta:'all', mes:'all', ano:'all', busca:'' };
   let sortKey = 'data', sortDir = -1, page = 1, pageSize = 10;
   let charts = {};
 
@@ -76,7 +92,8 @@
       if(state.motorista!=='all' && r.motorista!==state.motorista) return false;
       if(state.cidade!=='all' && r.cidade!==state.cidade) return false;
       if(state.meta!=='all' && r.meta!==state.meta) return false;
-      if(r.data < state.dataIni || r.data > state.dataFim) return false;
+      if(state.mes!=='all' && r.data.slice(5,7)!==state.mes) return false;
+      if(state.ano!=='all' && r.data.slice(0,4)!==state.ano) return false;
       return true;
     });
   }
@@ -131,7 +148,9 @@
       kpiCard('Quantidade de Volumes', fmtNum(totalVolumes), `Total transportado no período`, PALETTE.accent2, kpiIcons.package),
     ];
     document.getElementById('kpiGrid').innerHTML = cards.join('');
-    document.getElementById('kpiSub').textContent = `${fmtDateFull(state.dataIni)} — ${fmtDateFull(state.dataFim)}`;
+    const kpiSubMes = state.mes==='all' ? 'Mês' : MESES_PT[parseInt(state.mes,10)-1];
+    const kpiSubAno = state.ano==='all' ? 'Ano' : state.ano;
+    document.getElementById('kpiSub').textContent = `${kpiSubMes} · ${kpiSubAno}`;
     document.getElementById('filterCount').textContent = `${f.length} de ${RAW.length} registros`;
   }
 
@@ -436,12 +455,12 @@
   selMotorista.addEventListener('change', e=>{ state.motorista=e.target.value; page=1; render(); });
   selCidade.addEventListener('change', e=>{ state.cidade=e.target.value; page=1; render(); });
   document.getElementById('fMeta').addEventListener('change', e=>{ state.meta=e.target.value; page=1; render(); });
-  fDataIni.addEventListener('change', e=>{ state.dataIni=e.target.value; page=1; render(); });
-  fDataFim.addEventListener('change', e=>{ state.dataFim=e.target.value; page=1; render(); });
+  selMes.addEventListener('change', e=>{ state.mes=e.target.value; page=1; render(); });
+  selAno.addEventListener('change', e=>{ state.ano=e.target.value; page=1; render(); });
   document.getElementById('clearFilters').addEventListener('click', ()=>{
-    state = { motorista:'all', cidade:'all', meta:'all', dataIni:minDate, dataFim:maxDate, busca:'' };
+    state = { motorista:'all', cidade:'all', meta:'all', mes:'all', ano:'all', busca:'' };
     selMotorista.value='all'; selCidade.value='all'; document.getElementById('fMeta').value='all';
-    fDataIni.value=minDate; fDataFim.value=maxDate; document.getElementById('tableSearch').value='';
+    selMes.value='all'; selAno.value='all'; document.getElementById('tableSearch').value='';
     page=1; render();
   });
   document.getElementById('tableSearch').addEventListener('input', e=>{ state.busca=e.target.value; page=1; renderTable(getFiltered()); });
