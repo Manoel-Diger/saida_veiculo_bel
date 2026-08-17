@@ -140,9 +140,11 @@
     const totalFrete = sum(f,r=>r.valorFrete);
     const totalMercadoria = sum(f,r=>r.valorMercadoria);
     const totalPeso = sum(f,r=>r.peso);
-    const metaValidos = f.filter(r=>r.meta==='Atendeu a Meta' || r.meta==='Não Atendeu a Meta');
-    const pctMeta = metaValidos.length>0 ? metaValidos.filter(r=>r.meta==='Atendeu a Meta').length/metaValidos.length : 0;
-    const occ = occCounts(f);
+    const totalVolumes = sum(f,r=>r.vols);
+    const totalEntregas = sum(f,r=>r.entregas);
+    const totalRealizadas = sum(f,r=>r.realizadas);
+    const taxaSucesso = totalEntregas>0 ? totalRealizadas/totalEntregas : 0;
+    const avgPctFrete = f.length > 0 ? sum(f, r=>r.pctFrete) / f.length : 0;
     const topMotorista = Object.entries(f.reduce((a,r)=>{a[r.motorista]=(a[r.motorista]||0)+r.valorFrete; return a;},{})).sort((a,b)=>b[1]-a[1])[0];
 
     const items = [
@@ -150,8 +152,9 @@
       `FRETE TOTAL <b>${fmtBRL(totalFrete)}</b>`,
       `MERCADORIA <b>${fmtBRL(totalMercadoria)}</b>`,
       `PESO <b>${fmtNum(totalPeso)} KG</b>`,
-      `META ATENDIDA <b>${fmtPct(pctMeta)}</b>`,
-      occ.operational>0 ? `OCORRÊNCIAS <b>${occ.total}</b> (${occ.operational} OPERACIONAL)` : `OCORRÊNCIAS <b>${occ.total}</b>`,
+      `Performance de Entrega <b>${fmtPct(taxaSucesso)}</b>`,
+      `% de Frete <b>${fmtPct(avgPctFrete)}</b>`,
+      `Quantidade de Volumes <b>${fmtNum(totalVolumes)}</b>`,
       topMotorista ? `DESTAQUE <b>${topMotorista[0].toUpperCase()}</b>` : ''
     ].filter(Boolean);
 
