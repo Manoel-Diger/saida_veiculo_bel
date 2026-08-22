@@ -39,6 +39,8 @@
   }
 
   // ---------- Helpers ----------
+  const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]);
   const fmtBRL = (v) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(v||0);
   const fmtBRLfull = (v) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
   const fmtNum = (v,d=0) => new Intl.NumberFormat('pt-BR',{maximumFractionDigits:d,minimumFractionDigits:d}).format(v||0);
@@ -146,6 +148,8 @@
       kpiCard('Performance de Entrega', fmtPct(taxaSucesso), `Realizadas sobre total programado`, PALETTE.accent2, kpiIcons.check),
       kpiCard('Frete sobre Mercadoria', fmtPct(avgPctFrete), `Percentual médio sobre valor de mercadoria`, PALETTE.accent3, kpiIcons.percent),
       kpiCard('Quantidade de Volumes', fmtNum(totalVolumes), `Total transportado no período`, PALETTE.accent2, kpiIcons.package),
+      kpiCard('Cumprimento de Meta', fmtPct(pctMeta), `<b>${fmtNum(metaOk)}</b> de <b>${fmtNum(metaValidos.length)}</b> viagens válidas atenderam a meta`, PALETTE.accent3, kpiIcons.target),
+      kpiCard('Km Rodados', fmtNum(totalKm), `Média de <b>${fmtNum(kmValidos.length? totalKm/kmValidos.length:0,1)} km</b>/viagem no período`, PALETTE.dim, kpiIcons.road),
     ];
     document.getElementById('kpiGrid').innerHTML = cards.join('');
     const kpiSubMes = state.mes==='all' ? 'Mês' : MESES_PT[parseInt(state.mes,10)-1];
@@ -174,7 +178,7 @@
       `Performance de Entrega <b>${fmtPct(taxaSucesso)}</b>`,
       `% de Frete <b>${fmtPct(avgPctFrete)}</b>`,
       `Quantidade de Volumes <b>${fmtNum(totalVolumes)}</b>`,
-      topMotorista ? `DESTAQUE <b>${topMotorista[0].toUpperCase()}</b>` : ''
+      topMotorista ? `DESTAQUE <b>${esc(topMotorista[0].toUpperCase())}</b>` : ''
     ].filter(Boolean);
 
     const html = items.map(t=>`<span class="ticker-item">${t}</span><span class="ticker-item dot">◆</span>`).join('');
@@ -358,11 +362,11 @@
     const totalEnt = sum(f,r=>r.entregas);
 
     const cards = [];
-    cards.push(`<div class="insight-card good"><div class="i-label">Destaque de faturamento</div><div class="i-text"><b>${topMot[0]}</b> lidera o período com <b>${fmtBRLfull(topMot[1])}</b> em fretes acumulados.</div></div>`);
-    cards.push(`<div class="insight-card"><div class="i-label">Rota mais ativa</div><div class="i-text"><b>${topCidade[0]}</b> concentra o maior volume de entregas, com <b>${fmtNum(topCidade[1])}</b> realizadas no período.</div></div>`);
+    cards.push(`<div class="insight-card good"><div class="i-label">Destaque de faturamento</div><div class="i-text"><b>${esc(topMot[0])}</b> lidera o período com <b>${fmtBRLfull(topMot[1])}</b> em fretes acumulados.</div></div>`);
+    cards.push(`<div class="insight-card"><div class="i-label">Rota mais ativa</div><div class="i-text"><b>${esc(topCidade[0])}</b> concentra o maior volume de entregas, com <b>${fmtNum(topCidade[1])}</b> realizadas no período.</div></div>`);
     cards.push(`<div class="insight-card ${pctMeta>=0.85?'good':'warn'}"><div class="i-label">Cumprimento de meta</div><div class="i-text"><b>${fmtPct(pctMeta)}</b> das viagens válidas atenderam a meta estabelecida${pctMeta<0.85?', abaixo do ideal — vale revisar rotas críticas.':'.'} </div></div>`);
     if(topOcc){
-      cards.push(`<div class="insight-card ${occAll.operational>0?'danger':'warn'}"><div class="i-label">Ponto de atenção</div><div class="i-text"><b>${occAll.total}</b> ocorrência(s) registradas no período , <b>${occAll.operational}</b> de origem operacional (falta de tempo) e <b>${occAll.commercial}</b> encaminhadas ao comercial. <b>${topOcc[0]}</b> concentra o maior número de casos (<b>${topOcc[1]}</b>).</div></div>`);
+      cards.push(`<div class="insight-card ${occAll.operational>0?'danger':'warn'}"><div class="i-label">Ponto de atenção</div><div class="i-text"><b>${occAll.total}</b> ocorrência(s) registradas no período , <b>${occAll.operational}</b> de origem operacional (falta de tempo) e <b>${occAll.commercial}</b> encaminhadas ao comercial. <b>${esc(topOcc[0])}</b> concentra o maior número de casos (<b>${topOcc[1]}</b>).</div></div>`);
     } else {
       cards.push(`<div class="insight-card good"><div class="i-label">Ponto de atenção</div><div class="i-text">Nenhuma ocorrência registrada no período filtrado. Operação dentro da normalidade.</div></div>`);
     }
@@ -378,7 +382,7 @@
     let rows = f.filter(r=>{
       if(!state.busca) return true;
       const q = state.busca.toLowerCase();
-      return r.placa.toLowerCase().includes(q) || r.motorista.toLowerCase().includes(q);
+      return r.placa.toLowerCase().includes(q) || r.motorista.toLowerCase().includes(q) || r.cidade.toLowerCase().includes(q);
     });
 
     rows = rows.slice().sort((a,b)=>{
@@ -390,6 +394,16 @@
     });
 
     document.getElementById('tableCount').textContent = `${rows.length} registros`;
+
+    if(rows.length===0){
+      document.getElementById('tableBody').innerHTML =
+        `<tr><td colspan="12" style="text-align:center; padding:28px; color:var(--text-faint);">Nenhum registro corresponde aos filtros ou à busca atual.</td></tr>`;
+      document.getElementById('pgInfo').textContent = 'Página 0 de 0';
+      document.getElementById('pgPrev').disabled = true;
+      document.getElementById('pgNext').disabled = true;
+      return;
+    }
+
     const totalPages = Math.max(1, Math.ceil(rows.length/pageSize));
     if(page>totalPages) page = totalPages;
     const start = (page-1)*pageSize;
@@ -407,15 +421,15 @@
       const hasOperational = codes.some(isOperationalCode);
       const cls = hasOperational ? 'occ-flag-critical' : 'occ-flag';
       const label = hasOperational ? 'operacional' : 'comercial';
-      return `<span class="${cls}" title="${label}">⚠ ${codes.join(', ')}</span>`;
+      return `<span class="${cls}" title="${label}">⚠ ${esc(codes.join(', '))}</span>`;
     };
 
     document.getElementById('tableBody').innerHTML = pageRows.map(r=>`
       <tr>
         <td class="mono-cell">${fmtDateFull(r.data)}</td>
-        <td class="mono-cell">${r.placa}</td>
-        <td>${r.motorista}</td>
-        <td>${r.cidade}</td>
+        <td class="mono-cell">${esc(r.placa)}</td>
+        <td>${esc(r.motorista)}</td>
+        <td>${esc(r.cidade)}</td>
         <td class="mono-cell">${fmtBRLfull(r.valorFrete)}</td>
         <td class="mono-cell">${fmtNum(r.peso)}</td>
         <td class="mono-cell">${fmtNum(r.entregas)}</td>
@@ -432,7 +446,13 @@
 
     document.querySelectorAll('thead th').forEach(th=>{
       const arrow = th.querySelector('.sort-arrow');
-      if(th.dataset.key===sortKey){ arrow.textContent = sortDir===1?'▲':'▼'; } else { arrow.textContent=''; }
+      if(th.dataset.key===sortKey){
+        arrow.textContent = sortDir===1?'▲':'▼';
+        th.setAttribute('aria-sort', sortDir===1?'ascending':'descending');
+      } else {
+        arrow.textContent='';
+        th.setAttribute('aria-sort','none');
+      }
     });
   }
 
@@ -465,10 +485,14 @@
   });
   document.getElementById('tableSearch').addEventListener('input', e=>{ state.busca=e.target.value; page=1; renderTable(getFiltered()); });
   document.querySelectorAll('thead th').forEach(th=>{
-    th.addEventListener('click', ()=>{
+    const doSort = () => {
       const key = th.dataset.key;
       if(sortKey===key){ sortDir*=-1; } else { sortKey=key; sortDir = (key==='data')?-1:1; }
       renderTable(getFiltered());
+    };
+    th.addEventListener('click', doSort);
+    th.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); doSort(); }
     });
   });
   document.getElementById('pgPrev').addEventListener('click', ()=>{ if(page>1){ page--; renderTable(getFiltered()); } });
@@ -496,6 +520,36 @@
       btn.disabled = false; btn.classList.remove('spinning'); label.textContent='Atualizar Dados';
       showToast('Dados atualizados com sucesso');
     }, 750);
+  });
+
+  // ---------- Export CSV ----------
+  function toCsvValue(v){
+    const s = String(v ?? '');
+    return /[";\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const rows = getFiltered();
+    if(rows.length===0){ showToast('Nenhum registro para exportar com os filtros atuais'); return; }
+    const cols = [
+      ['data','Data'], ['placa','Placa'], ['motorista','Motorista'], ['cidade','Cidade'],
+      ['valorFrete','Valor Frete'], ['valorMercadoria','Valor Mercadoria'], ['peso','Peso (kg)'],
+      ['entregas','Entregas'], ['realizadas','Realizadas'], ['retornadas','Retornadas'],
+      ['pctEntrega','% Entrega'], ['meta','Meta'], ['ocorrencia','Ocorrência']
+    ];
+    const header = cols.map(c=>toCsvValue(c[1])).join(';');
+    const lines = rows.map(r=> cols.map(c=>toCsvValue(r[c[0]])).join(';'));
+    const csv = '\uFEFF' + [header, ...lines].join('\r\n'); // BOM p/ acentuação correta no Excel
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `vitlog-saida-veiculos-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`${rows.length} registro(s) exportado(s) em CSV`);
   });
 
   // ---------- Clock ----------

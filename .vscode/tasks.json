@@ -4,18 +4,33 @@
     {
       "label": "Atualizar dados do dashboard",
       "type": "shell",
-      "command": "python3 scripts/atualizar_dados.py",
-      "problemMatcher": [],
+      "command": "${command:python.interpreterPath}",
+      "args": ["${workspaceFolder}/scripts/atualizar_dados.py"],
       "group": {
         "kind": "build",
         "isDefault": true
       },
+      "problemMatcher": [],
       "presentation": {
         "reveal": "always",
         "panel": "shared",
         "clear": true
       },
-      "detail": "Lê Saida_BEL.xlsx e regrava data/dataset.js com os dados mais recentes."
+      "detail": "Lê Saida_BEL.xlsx e regrava data/dataset.js"
+    },
+    {
+      "label": "Instalar dependências (openpyxl)",
+      "type": "shell",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-m", "pip", "install", "-r", "requirements.txt"],
+      "group": "none",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "detail": "Instala a biblioteca openpyxl usada pelo script de atualização"
     }
   ]
 }

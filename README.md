@@ -30,7 +30,9 @@ com KPIs, gráficos, filtros e tabela detalhada.
 Basta abrir o `index.html` duas vezes (clique duplo) em qualquer navegador — **não precisa de
 internet nem de servidor**. Os dados e a biblioteca de gráficos já estão embutidos localmente
 em `data/dataset.js` e `js/vendor/chart.umd.js`, exatamente para evitar falhas de carregamento
-por CDN indisponível ou rede bloqueada.
+por CDN indisponível ou rede bloqueada. As fontes web (Google Fonts) são carregadas quando há
+internet e caem automaticamente para as fontes do sistema operacional quando não há — o layout
+não quebra em nenhum dos dois casos.
 
 Se preferir rodar com um servidor local (opcional, útil se for hospedar em algum lugar depois):
 
@@ -39,6 +41,18 @@ Se preferir rodar com um servidor local (opcional, útil se for hospedar em algu
 python3 -m http.server 8080
 # depois acesse http://localhost:8080
 ```
+
+## Funcionalidades
+
+- **KPIs e ticker** com faturamento, peso, entregas, cumprimento de meta e km rodados.
+- **Gráficos** (Chart.js) de frete por dia, cumprimento de meta, faturamento por motorista,
+  entregas por cidade, peso por motorista e ocorrências.
+- **Filtros** por mês, ano, motorista e cidade, com busca livre (placa, motorista ou cidade)
+  e tabela paginada e ordenável por qualquer coluna (clique ou `Enter`/`Espaço` no cabeçalho).
+- **Exportar CSV**: baixa exatamente os registros que estão sob os filtros/busca atuais,
+  já formatados para abrir direto no Excel (separador `;`, acentuação em UTF-8 com BOM).
+- **Acessibilidade**: cabeçalhos de tabela navegáveis por teclado, rótulos `aria-label` nos
+  campos de busca e botões, estado vazio explícito quando um filtro não retorna nada.
 
 ## Atualizando os dados
 
