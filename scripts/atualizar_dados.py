@@ -51,6 +51,36 @@ def to_seconds(value):
     return None
 
 
+def normalize_occurrence(raw):
+    """Converte o valor bruto da coluna 'Ocorrência' em uma lista de códigos de 2 dígitos.
+
+    A coluna aceita múltiplos códigos separados por vírgula (ex.: "38, 13"). Como a planilha
+    usa configuração regional pt-BR, quando alguém digita dois códigos separados por vírgula
+    sem espaço o Excel às vezes interpreta a vírgula como separador decimal e guarda um único
+    número (ex.: "38,13" vira 38.13). Esta função desfaz essa conversão, recompondo os códigos
+    originais a partir da parte inteira e da parte decimal.
+    """
+    if raw is None:
+        return []
+    if isinstance(raw, bool):
+        return []
+    if isinstance(raw, int):
+        return [] if raw == 0 else [str(raw).zfill(2)]
+    if isinstance(raw, float):
+        if raw == 0:
+            return []
+        texto = f"{raw:.2f}"  # ex.: 42.1 -> "42.10", 9.13 -> "9.13"
+        inteiro, decimal = texto.split(".")
+        return [inteiro.zfill(2), decimal.zfill(2)]
+    if isinstance(raw, str):
+        raw = raw.strip()
+        if raw in ("", "0"):
+            return []
+        partes = [p.strip() for p in raw.split(",")]
+        return [p.zfill(2) for p in partes if p not in ("", "0")]
+    return []
+
+
 def clean_records(ws):
     rows = list(ws.iter_rows(min_row=2, values_only=True))
     headers = [c.value for c in ws[1]]
@@ -92,12 +122,8 @@ def clean_records(ws):
         rec["nfsVoltaram"] = float(nfs) if isinstance(nfs, (int, float)) else 0
 
         occ = d.get("Ocorrência")
-        if isinstance(occ, (int, float)):
-            rec["ocorrencia"] = occ
-        elif isinstance(occ, str) and occ.strip() not in ("", "0"):
-            rec["ocorrencia"] = occ.strip()
-        else:
-            rec["ocorrencia"] = 0
+        codigos = normalize_occurrence(occ)
+        rec["ocorrencia"] = ",".join(codigos) if codigos else 0
 
         records.append(rec)
 

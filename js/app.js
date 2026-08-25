@@ -6,27 +6,58 @@
   const RAW = VITLOG_DATA;
 
   const PALETTE = {
-    accent:'#5B6EF5', accent2:'#34D399', accent3:'#F5B94D',
-    danger:'#EF6B6B', blue:'#38BDF8', dim:'#93A1BC', faint:'#5C6A85',
+    accent:'#4D8DFF', accent2:'#34D399', accent3:'#F5B94D',
+    danger:'#EF6B6B', blue:'#4D8DFF', dim:'#93A1BC', faint:'#5C6A85',
     grid:'rgba(255,255,255,0.06)', panel:'#111A2B'
   };
 
-  // Código "13" = falta de tempo → único que representa problema operacional real.
-  // Os demais códigos são ocorrências encaminhadas ao comercial.
+  // Legenda oficial dos códigos de ocorrência (fornecida pela operação).
+  const OCC_LEGEND = {
+    '05': 'Destinatário alega mercadoria não pedida',
+    '08': 'Destinatário alega mercadoria em desacordo com o pedido',
+    '09': 'Destinatário ausente / estabelecimento fechado',
+    '10': 'Endereço do destinatário não localizado',
+    '13': 'Entrega prejudicada por horário',
+    '27': 'Excesso de veículos no local de entrega',
+    '29': 'Responsável pelo recebimento ausente',
+    '38': 'CTRC retido para conferência',
+    '42': 'Endereço de entrega modificado',
+    '63': 'Greve',
+    '66': 'Rodovia com acesso interrompido',
+    '79': 'Feriado local',
+  };
+  const occLabel = (code) => OCC_LEGEND[code] ? `${code} · ${OCC_LEGEND[code]}` : `${code} · Outro código`;
+
+  // Código "13" = entrega prejudicada por horário → única ocorrência de responsabilidade
+  // operacional direta (falta de tempo). Todas as demais são de natureza comercial
+  // (cliente ausente, endereço, greve, etc.). Usado para colorir vermelho vs. amarelo.
   const OPERATIONAL_CODE = '13';
+  function isOperationalCode(code){ return String(code).trim() === OPERATIONAL_CODE; }
+
   function parseOcorrenciaCodes(raw){
     if(raw === 0 || raw === '0' || raw === null || raw === undefined || raw === '') return [];
-    return String(raw).split(',').map(s=>s.trim()).filter(s=> s!=='' && s!=='0');
+    return String(raw).split(',').map(s=>s.trim().padStart(2,'0')).filter(s=> s!=='' && s!=='00');
   }
-  function isOperationalCode(code){ return String(code).trim() === OPERATIONAL_CODE; }
+
+  // Códigos de uma linha "relevantes" para as agregações (KPIs, gráficos, rankings, insights),
+  // respeitando o filtro de ocorrência ativo. Sem isso, uma viagem com múltiplos códigos
+  // (ex.: "10,13,05") faria códigos que NÃO foram filtrados vazarem para as estatísticas
+  // só porque a viagem também continha o código filtrado.
+  function getRelevantCodes(r){
+    const codes = parseOcorrenciaCodes(r.ocorrencia);
+    if(state.ocorrencia==='all' || state.ocorrencia==='none') return codes;
+    return codes.filter(c=>c===state.ocorrencia);
+  }
+
   function occCounts(rows){
-    let total=0, operational=0;
+    let total=0, operational=0, viagensComOcorrencia=0;
     rows.forEach(r=>{
-      const codes = parseOcorrenciaCodes(r.ocorrencia);
+      const codes = getRelevantCodes(r);
+      if(codes.length>0) viagensComOcorrencia++;
       total += codes.length;
       operational += codes.filter(isOperationalCode).length;
     });
-    return { total, operational, commercial: total-operational };
+    return { total, operational, commercial: total-operational, viagensComOcorrencia };
   }
 
   const CHARTS_AVAILABLE = typeof Chart !== 'undefined';
@@ -81,11 +112,29 @@
     selAno.value='all';
   })();
 
+  // Ocorrências presentes na base, ordenadas por frequência (mais comuns primeiro)
+  const occFrequency = {};
+  RAW.forEach(r=>{ parseOcorrenciaCodes(r.ocorrencia).forEach(c=>{ occFrequency[c] = (occFrequency[c]||0)+1; }); });
+  const occCodesPresentes = Object.keys(occFrequency).sort((a,b)=> occFrequency[b]-occFrequency[a]);
+
+  const selOcorrencia = document.getElementById('fOcorrencia');
+  (() => {
+    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Ocorrência (todas)';
+    selOcorrencia.appendChild(oAll);
+    const oNone = document.createElement('option'); oNone.value='none'; oNone.textContent='Sem ocorrência';
+    selOcorrencia.appendChild(oNone);
+    occCodesPresentes.forEach(c=>{
+      const o=document.createElement('option'); o.value=c; o.textContent=`${occLabel(c)} (${occFrequency[c]})`;
+      selOcorrencia.appendChild(o);
+    });
+    selOcorrencia.value='all';
+  })();
+
   document.getElementById('periodSub').textContent =
     `Base "jan_26 (2)" · ${RAW.length} lançamentos · ${fmtDateFull(minDate)} a ${fmtDateFull(maxDate)}`;
 
   // ---------- State ----------
-  let state = { motorista:'all', cidade:'all', meta:'all', mes:'all', ano:'all', busca:'' };
+  let state = { motorista:'all', cidade:'all', meta:'all', mes:'all', ano:'all', ocorrencia:'all', busca:'' };
   let sortKey = 'data', sortDir = -1, page = 1, pageSize = 10;
   let charts = {};
 
@@ -96,6 +145,8 @@
       if(state.meta!=='all' && r.meta!==state.meta) return false;
       if(state.mes!=='all' && r.data.slice(5,7)!==state.mes) return false;
       if(state.ano!=='all' && r.data.slice(0,4)!==state.ano) return false;
+      if(state.ocorrencia==='none' && parseOcorrenciaCodes(r.ocorrencia).length>0) return false;
+      if(state.ocorrencia!=='all' && state.ocorrencia!=='none' && !parseOcorrenciaCodes(r.ocorrencia).includes(state.ocorrencia)) return false;
       return true;
     });
   }
@@ -150,6 +201,7 @@
       kpiCard('Quantidade de Volumes', fmtNum(totalVolumes), `Total transportado no período`, PALETTE.accent2, kpiIcons.package),
       kpiCard('Cumprimento de Meta', fmtPct(pctMeta), `<b>${fmtNum(metaOk)}</b> de <b>${fmtNum(metaValidos.length)}</b> viagens válidas atenderam a meta`, PALETTE.accent3, kpiIcons.target),
       kpiCard('Km Rodados', fmtNum(totalKm), `Média de <b>${fmtNum(kmValidos.length? totalKm/kmValidos.length:0,1)} km</b>/viagem no período`, PALETTE.dim, kpiIcons.road),
+      kpiCard('Ocorrências Registradas', fmtNum(occ.total), `Em <b>${fmtPct(f.length? occ.viagensComOcorrencia/f.length:0)}</b> das viagens do período`, PALETTE.danger, kpiIcons.alert),
     ];
     document.getElementById('kpiGrid').innerHTML = cards.join('');
     const kpiSubMes = state.mes==='all' ? 'Mês' : MESES_PT[parseInt(state.mes,10)-1];
@@ -302,7 +354,7 @@
     destroyChart('ocorrencia');
     const byMot = {};
     f.forEach(r=>{
-      const codes = parseOcorrenciaCodes(r.ocorrencia);
+      const codes = getRelevantCodes(r);
       if(codes.length===0) return;
       if(!byMot[r.motorista]) byMot[r.motorista] = { op:0, com:0 };
       codes.forEach(c=>{
@@ -310,7 +362,7 @@
         else byMot[r.motorista].com++;
       });
     });
-    const sorted = Object.entries(byMot).sort((a,b)=> (b[1].op+b[1].com) - (a[1].op+a[1].com));
+    const sorted = Object.entries(byMot).sort((a,b)=> (b[1].op+b[1].com) - (a[1].op+a[1].com)).slice(0,8);
     const ctx = document.getElementById('chartOcorrencia').getContext('2d');
     if(sorted.length===0){
       charts.ocorrencia = new Chart(ctx,{
@@ -323,16 +375,47 @@
       type:'bar',
       data:{ labels: sorted.map(x=>x[0]),
         datasets:[
-          { label:'Operacional (falta de tempo)', data: sorted.map(x=>x[1].op), backgroundColor: PALETTE.danger, borderRadius:5, maxBarThickness:26 },
-          { label:'Comercial', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:26 }
+          { label:'Operacional (13 · falta de tempo)', data: sorted.map(x=>x[1].op), backgroundColor: PALETTE.danger, borderRadius:5, maxBarThickness:22 },
+          { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }
         ]},
       options:{
+        indexAxis:'y',
         responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10 } },
-        scales:{ x:{ grid:{display:false}, stacked:true }, y:{ grid:{color:PALETTE.grid}, ticks:{ stepSize:1, precision:0 }, stacked:true } }
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } } },
+        scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true } }
       }
     });
   }
+
+  // Ranking dos tipos de ocorrência (códigos) — permite identificar de imediato
+  // quais motivos mais impactam a operação no período filtrado.
+  function renderOccTypeRanking(f){
+    const container = document.getElementById('occTypeRanking');
+    if(!container) return;
+    const counts = {};
+    f.forEach(r=>{ getRelevantCodes(r).forEach(c=>{ counts[c] = (counts[c]||0)+1; }); });
+    const entries = Object.entries(counts).sort((a,b)=> b[1]-a[1]);
+    const total = entries.reduce((a,[,n])=>a+n,0);
+    if(entries.length===0){
+      container.innerHTML = `<div class="rank-empty">Nenhuma ocorrência registrada com os filtros atuais.</div>`;
+      return;
+    }
+    container.innerHTML = entries.map(([code,n])=>{
+      const pct = total>0 ? n/total : 0;
+      const desc = OCC_LEGEND[code] || 'Código não catalogado';
+      const cls = isOperationalCode(code) ? 'rank-code operational' : 'rank-code commercial';
+      const barCls = isOperationalCode(code) ? 'rank-bar-fill operational' : 'rank-bar-fill commercial';
+      return `<div class="rank-item">
+        <div class="rank-item-top">
+          <span class="${cls}">${esc(code)}</span>
+          <span class="rank-desc">${esc(desc)}</span>
+          <span class="rank-count">${fmtNum(n)} · ${fmtPct(pct)}</span>
+        </div>
+        <div class="rank-bar-track"><div class="${barCls}" style="width:${(pct*100).toFixed(1)}%"></div></div>
+      </div>`;
+    }).join('');
+  }
+
 
   // ---------- Insights ----------
   function renderInsights(f){
@@ -353,10 +436,14 @@
     const occAll = occCounts(f);
     const byMotOcc = {};
     f.forEach(r=>{
-      const codes = parseOcorrenciaCodes(r.ocorrencia);
+      const codes = getRelevantCodes(r);
       if(codes.length) byMotOcc[r.motorista] = (byMotOcc[r.motorista]||0) + codes.length;
     });
     const topOcc = Object.entries(byMotOcc).sort((a,b)=>b[1]-a[1])[0];
+
+    const byCodeOcc = {};
+    f.forEach(r=>{ getRelevantCodes(r).forEach(c=>{ byCodeOcc[c]=(byCodeOcc[c]||0)+1; }); });
+    const topCode = Object.entries(byCodeOcc).sort((a,b)=>b[1]-a[1])[0];
 
     const totalRetorno = sum(f,r=>r.retornadas);
     const totalEnt = sum(f,r=>r.entregas);
@@ -365,8 +452,9 @@
     cards.push(`<div class="insight-card good"><div class="i-label">Destaque de faturamento</div><div class="i-text"><b>${esc(topMot[0])}</b> lidera o período com <b>${fmtBRLfull(topMot[1])}</b> em fretes acumulados.</div></div>`);
     cards.push(`<div class="insight-card"><div class="i-label">Rota mais ativa</div><div class="i-text"><b>${esc(topCidade[0])}</b> concentra o maior volume de entregas, com <b>${fmtNum(topCidade[1])}</b> realizadas no período.</div></div>`);
     cards.push(`<div class="insight-card ${pctMeta>=0.85?'good':'warn'}"><div class="i-label">Cumprimento de meta</div><div class="i-text"><b>${fmtPct(pctMeta)}</b> das viagens válidas atenderam a meta estabelecida${pctMeta<0.85?', abaixo do ideal — vale revisar rotas críticas.':'.'} </div></div>`);
-    if(topOcc){
-      cards.push(`<div class="insight-card ${occAll.operational>0?'danger':'warn'}"><div class="i-label">Ponto de atenção</div><div class="i-text"><b>${occAll.total}</b> ocorrência(s) registradas no período , <b>${occAll.operational}</b> de origem operacional (falta de tempo) e <b>${occAll.commercial}</b> encaminhadas ao comercial. <b>${esc(topOcc[0])}</b> concentra o maior número de casos (<b>${topOcc[1]}</b>).</div></div>`);
+    if(topOcc && topCode){
+      const codeDesc = OCC_LEGEND[topCode[0]] || 'código não catalogado';
+      cards.push(`<div class="insight-card danger"><div class="i-label">Principais ofensores · Ocorrências</div><div class="i-text"><b>${occAll.total}</b> ocorrência(s) em <b>${occAll.viagensComOcorrencia}</b> viagem(ns) no período — <b>${occAll.operational}</b> operacional(is) (código 13, falta de tempo) e <b>${occAll.commercial}</b> comercial(is). Motorista com mais casos: <b>${esc(topOcc[0])}</b> (<b>${topOcc[1]}</b>). Motivo mais frequente: <b>${esc(topCode[0])} · ${esc(codeDesc)}</b> (<b>${topCode[1]}</b> caso(s)).</div></div>`);
     } else {
       cards.push(`<div class="insight-card good"><div class="i-label">Ponto de atenção</div><div class="i-text">Nenhuma ocorrência registrada no período filtrado. Operação dentro da normalidade.</div></div>`);
     }
@@ -420,8 +508,8 @@
       if(codes.length===0) return `<span class="occ-none">—</span>`;
       const hasOperational = codes.some(isOperationalCode);
       const cls = hasOperational ? 'occ-flag-critical' : 'occ-flag';
-      const label = hasOperational ? 'operacional' : 'comercial';
-      return `<span class="${cls}" title="${label}">⚠ ${esc(codes.join(', '))}</span>`;
+      const tooltip = codes.map(c=>occLabel(c)).join(' | ');
+      return `<span class="${cls}" title="${esc(tooltip)}">⚠ ${esc(codes.join(', '))}</span>`;
     };
 
     document.getElementById('tableBody').innerHTML = pageRows.map(r=>`
@@ -467,6 +555,7 @@
     safeRenderChart(renderChartCidade, f, '#chartCidade');
     safeRenderChart(renderChartPeso, f, '#chartPeso');
     safeRenderChart(renderChartOcorrencia, f, '#chartOcorrencia');
+    renderOccTypeRanking(f);
     try{ renderInsights(f); } catch(err){ console.error('Falha nos insights:', err); }
     try{ renderTable(f); } catch(err){ console.error('Falha na tabela:', err); }
   }
@@ -477,10 +566,11 @@
   document.getElementById('fMeta').addEventListener('change', e=>{ state.meta=e.target.value; page=1; render(); });
   selMes.addEventListener('change', e=>{ state.mes=e.target.value; page=1; render(); });
   selAno.addEventListener('change', e=>{ state.ano=e.target.value; page=1; render(); });
+  selOcorrencia.addEventListener('change', e=>{ state.ocorrencia=e.target.value; page=1; render(); });
   document.getElementById('clearFilters').addEventListener('click', ()=>{
-    state = { motorista:'all', cidade:'all', meta:'all', mes:'all', ano:'all', busca:'' };
+    state = { motorista:'all', cidade:'all', meta:'all', mes:'all', ano:'all', ocorrencia:'all', busca:'' };
     selMotorista.value='all'; selCidade.value='all'; document.getElementById('fMeta').value='all';
-    selMes.value='all'; selAno.value='all'; document.getElementById('tableSearch').value='';
+    selMes.value='all'; selAno.value='all'; selOcorrencia.value='all'; document.getElementById('tableSearch').value='';
     page=1; render();
   });
   document.getElementById('tableSearch').addEventListener('input', e=>{ state.busca=e.target.value; page=1; renderTable(getFiltered()); });
@@ -534,10 +624,18 @@
       ['data','Data'], ['placa','Placa'], ['motorista','Motorista'], ['cidade','Cidade'],
       ['valorFrete','Valor Frete'], ['valorMercadoria','Valor Mercadoria'], ['peso','Peso (kg)'],
       ['entregas','Entregas'], ['realizadas','Realizadas'], ['retornadas','Retornadas'],
-      ['pctEntrega','% Entrega'], ['meta','Meta'], ['ocorrencia','Ocorrência']
+      ['pctEntrega','% Entrega'], ['meta','Meta'], ['ocorrencia','Código(s) Ocorrência'], ['ocorrenciaDesc','Descrição da(s) Ocorrência(s)']
     ];
     const header = cols.map(c=>toCsvValue(c[1])).join(';');
-    const lines = rows.map(r=> cols.map(c=>toCsvValue(r[c[0]])).join(';'));
+    const lines = rows.map(r=>{
+      const codes = parseOcorrenciaCodes(r.ocorrencia);
+      const row = {
+        ...r,
+        ocorrencia: codes.join(', '),
+        ocorrenciaDesc: codes.map(c=>OCC_LEGEND[c]||'Código não catalogado').join(' | ')
+      };
+      return cols.map(c=>toCsvValue(row[c[0]])).join(';');
+    });
     const csv = '\uFEFF' + [header, ...lines].join('\r\n'); // BOM p/ acentuação correta no Excel
     const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
     const url = URL.createObjectURL(blob);

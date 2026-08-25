@@ -46,13 +46,31 @@ python3 -m http.server 8080
 
 - **KPIs e ticker** com faturamento, peso, entregas, cumprimento de meta e km rodados.
 - **Gráficos** (Chart.js) de frete por dia, cumprimento de meta, faturamento por motorista,
-  entregas por cidade, peso por motorista e ocorrências.
-- **Filtros** por mês, ano, motorista e cidade, com busca livre (placa, motorista ou cidade)
-  e tabela paginada e ordenável por qualquer coluna (clique ou `Enter`/`Espaço` no cabeçalho).
+  entregas por cidade, peso por motorista e principais ofensores por ocorrência.
+- **Segmentação por ocorrência**: filtro dedicado por código de ocorrência (com "Sem ocorrência"
+  como opção), ranking "Principais Ofensores por Motorista" e ranking "Principais Ofensores por
+  Tipo de Ocorrência" (código + descrição + % do total), para identificar de imediato os
+  maiores geradores de problema — seja por motorista, seja por motivo. A legenda dos códigos
+  (05, 08, 09, 10, 13, 27, 29, 38, 42, 63, 66, 79) está em `js/app.js` (constante `OCC_LEGEND`);
+  qualquer código fora dessa lista aparece como "Outro código" nos filtros e rankings.
+- **Filtros** por mês, ano, motorista, cidade e ocorrência, com busca livre (placa, motorista
+  ou cidade) e tabela paginada e ordenável por qualquer coluna (clique ou `Enter`/`Espaço`
+  no cabeçalho).
 - **Exportar CSV**: baixa exatamente os registros que estão sob os filtros/busca atuais,
-  já formatados para abrir direto no Excel (separador `;`, acentuação em UTF-8 com BOM).
+  já formatados para abrir direto no Excel (separador `;`, acentuação em UTF-8 com BOM),
+  incluindo a descrição legível de cada código de ocorrência.
 - **Acessibilidade**: cabeçalhos de tabela navegáveis por teclado, rótulos `aria-label` nos
   campos de busca e botões, estado vazio explícito quando um filtro não retorna nada.
+
+### Sobre os códigos de ocorrência com múltiplos valores
+
+A coluna "Ocorrência" da planilha aceita mais de um código por viagem, separados por vírgula
+(ex.: `38, 13`). Como a planilha usa configuração regional pt-BR, o Excel às vezes interpreta
+essa vírgula como separador decimal e grava um único número (ex.: `38,13` vira `38.13`). O
+script `scripts/atualizar_dados.py` já desfaz essa conversão automaticamente ao gerar
+`data/dataset.js`, recompondo os códigos originais — não é preciso corrigir isso manualmente
+na planilha.
+
 
 ## Atualizando os dados
 

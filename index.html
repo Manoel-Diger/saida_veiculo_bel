@@ -83,6 +83,10 @@
           <option value="Não Atendeu a Meta">Não atendeu a meta</option>
         </select>
       </div>
+      <div class="filter-field">
+        <label>Ocorrência</label>
+        <select id="fOcorrencia"></select>
+      </div>
       <button id="clearFilters">Limpar filtros</button>
       <div class="filter-count" id="filterCount">— registros</div>
     </div>
@@ -152,10 +156,21 @@
       </div>
       <div class="panel">
         <div class="panel-head">
-          <div class="panel-title">Ocorrências Registradas<small>Operacional (falta de tempo) vs. comercial, por motorista</small></div>
+          <div class="panel-title">Principais Ofensores · por Motorista<small>Total de ocorrências no período filtrado</small></div>
         </div>
         <div class="chart-box"><canvas id="chartOcorrencia"></canvas></div>
       </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <div class="panel-head">
+        <div class="panel-title">Principais Ofensores · por Tipo de Ocorrência<small>Segmentação por código, do mais para o menos frequente no período filtrado</small></div>
+        <div class="occ-legend">
+          <span><i class="dot operational"></i>13 · Operacional (nossa responsabilidade)</span>
+          <span><i class="dot commercial"></i>Demais códigos · Comercial</span>
+        </div>
+      </div>
+      <div class="rank-list" id="occTypeRanking"></div>
     </div>
   </section>
 
