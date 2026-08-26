@@ -77,6 +77,12 @@
   const fmtNum = (v,d=0) => new Intl.NumberFormat('pt-BR',{maximumFractionDigits:d,minimumFractionDigits:d}).format(v||0);
   const fmtPct = (v) => (v*100).toFixed(1).replace('.',',') + '%';
   const fmtDate = (s) => { const [y,m,d] = s.split('-'); return `${d}/${m}`; };
+  const fmtHM = (segundos) => {
+    const total = Math.round(segundos||0);
+    const h = Math.floor(total/3600);
+    const m = Math.floor((total%3600)/60);
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  };
   const fmtDateFull = (s) => { const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; };
   const sum = (arr,fn) => arr.reduce((a,r)=>a+(fn(r)||0),0);
 
@@ -138,12 +144,13 @@
   let sortKey = 'data', sortDir = -1, page = 1, pageSize = 10;
   let charts = {};
 
-  function getFiltered(){
+  function getFiltered(opts){
+    opts = opts || {};
     return RAW.filter(r=>{
       if(state.motorista!=='all' && r.motorista!==state.motorista) return false;
       if(state.cidade!=='all' && r.cidade!==state.cidade) return false;
       if(state.meta!=='all' && r.meta!==state.meta) return false;
-      if(state.mes!=='all' && r.data.slice(5,7)!==state.mes) return false;
+      if(!opts.skipMes && state.mes!=='all' && r.data.slice(5,7)!==state.mes) return false;
       if(state.ano!=='all' && r.data.slice(0,4)!==state.ano) return false;
       if(state.ocorrencia==='none' && parseOcorrenciaCodes(r.ocorrencia).length>0) return false;
       if(state.ocorrencia!=='all' && state.ocorrencia!=='none' && !parseOcorrenciaCodes(r.ocorrencia).includes(state.ocorrencia)) return false;
@@ -350,6 +357,47 @@
     });
   }
 
+  function renderChartVolumesMotorista(f){
+    destroyChart('volumesMotorista');
+    const byMot = {};
+    f.forEach(r=>{ byMot[r.motorista]=(byMot[r.motorista]||0)+(r.vols||0); });
+    const sorted = Object.entries(byMot).sort((a,b)=>b[1]-a[1]);
+    const ctx = document.getElementById('chartVolumesMotorista').getContext('2d');
+    charts.volumesMotorista = new Chart(ctx,{
+      type:'bar',
+      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:22 }]},
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x)+' volumes' }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 } },
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } }, y:{ grid:{display:false} } }
+      }
+    });
+  }
+
+  function renderChartTempoMedioMotorista(f){
+    destroyChart('tempoMedioMotorista');
+    const byMot = {};
+    f.forEach(r=>{
+      if(!r.tempoSeg) return;
+      if(!byMot[r.motorista]) byMot[r.motorista] = { total:0, n:0 };
+      byMot[r.motorista].total += r.tempoSeg;
+      byMot[r.motorista].n += 1;
+    });
+    const sorted = Object.entries(byMot)
+      .map(([mot,v])=>[mot, v.n>0 ? v.total/v.n : 0])
+      .sort((a,b)=>b[1]-a[1]);
+    const ctx = document.getElementById('chartTempoMedioMotorista').getContext('2d');
+    charts.tempoMedioMotorista = new Chart(ctx,{
+      type:'bar',
+      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }]},
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtHM(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, padding:10 } },
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtHM(v) } }, y:{ grid:{display:false} } }
+      }
+    });
+  }
+
   function renderChartOcorrencia(f){
     destroyChart('ocorrencia');
     const byMot = {};
@@ -385,6 +433,86 @@
         scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true } }
       }
     });
+  }
+
+  // ---------- Comparativo mensal ----------
+  const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const periodLabel = (p) => { const [y,m] = p.split('-'); return `${MESES_ABREV[parseInt(m,10)-1]}/${y.slice(2)}`; };
+
+  const COMPARE_INDICATORS = [
+    { label:'Viagens', calc: rows=>rows.length, fmt: fmtNum },
+    { label:'Frete Total', calc: rows=>sum(rows,r=>r.valorFrete), fmt: fmtBRL },
+    { label:'Peso Transportado (kg)', calc: rows=>sum(rows,r=>r.peso), fmt: v=>fmtNum(v) },
+    { label:'Volumes', calc: rows=>sum(rows,r=>r.vols), fmt: v=>fmtNum(v) },
+    { label:'Cumprimento de Meta', isPct:true, calc: rows=>{
+        const mv = rows.filter(r=>r.meta==='Atendeu a Meta' || r.meta==='Não Atendeu a Meta');
+        return mv.length ? mv.filter(r=>r.meta==='Atendeu a Meta').length/mv.length : 0;
+      }, fmt: fmtPct },
+    { label:'Performance de Entrega', isPct:true, calc: rows=>{
+        const ent = sum(rows,r=>r.entregas), real = sum(rows,r=>r.realizadas);
+        return ent>0 ? real/ent : 0;
+      }, fmt: fmtPct },
+    { label:'Ocorrências Registradas', calc: rows=>occCounts(rows).total, fmt: v=>fmtNum(v) },
+    { label:'Tempo Médio de Viagem', isTime:true, calc: rows=>{
+        const comTempo = rows.filter(r=>r.tempoSeg);
+        return comTempo.length ? sum(comTempo,r=>r.tempoSeg)/comTempo.length : 0;
+      }, fmt: fmtHM },
+  ];
+
+  function variationLabel(ind, firstVal, lastVal){
+    if(ind.isTime){
+      const diff = lastVal-firstVal;
+      const sign = diff>=0?'+':'−';
+      return `${sign}${fmtHM(Math.abs(diff))}`;
+    }
+    if(ind.isPct){
+      const diffPp = (lastVal-firstVal)*100;
+      const sign = diffPp>=0?'+':'−';
+      return `${sign}${Math.abs(diffPp).toFixed(1).replace('.',',')} p.p.`;
+    }
+    if(firstVal===0) return lastVal===0 ? '—' : 'n/d';
+    const pct = ((lastVal-firstVal)/firstVal)*100;
+    const sign = pct>=0?'+':'−';
+    return `${sign}${Math.abs(pct).toFixed(1).replace('.',',')}%`;
+  }
+
+  function renderCompareTable(){
+    const body = document.getElementById('compareBody');
+    if(!body) return;
+    const rows = getFiltered({ skipMes:true });
+    const groups = {};
+    rows.forEach(r=>{ const k = r.data.slice(0,7); (groups[k] = groups[k]||[]).push(r); });
+    const periods = Object.keys(groups).sort();
+
+    const sub = document.getElementById('compareSub');
+    if(sub){
+      sub.textContent = periods.length>0
+        ? `${periods.length} período(s) comparado(s): ${periods.map(periodLabel).join(', ')} — ignora o filtro de Mês; respeita Ano, Motorista, Cidade, Meta e Ocorrência`
+        : `Nenhum período disponível para os filtros atuais`;
+    }
+
+    if(periods.length===0){
+      body.innerHTML = `<tr><td style="text-align:center; padding:24px; color:var(--text-faint);">Nenhum dado corresponde aos filtros atuais.</td></tr>`;
+      return;
+    }
+
+    const showVar = periods.length>=2;
+    let html = '<tr><th>Indicador</th>' + periods.map(p=>`<th>${esc(periodLabel(p))}</th>`).join('') + (showVar?'<th>Variação</th>':'') + '</tr>';
+
+    COMPARE_INDICATORS.forEach(ind=>{
+      const vals = periods.map(p=>ind.calc(groups[p]));
+      html += '<tr>';
+      html += `<td class="compare-label">${esc(ind.label)}</td>`;
+      html += vals.map(v=>`<td class="mono-cell">${ind.fmt(v)}</td>`).join('');
+      if(showVar){
+        const varStr = variationLabel(ind, vals[0], vals[vals.length-1]);
+        const cls = varStr.startsWith('+') ? 'var-up' : varStr.startsWith('−') ? 'var-down' : 'var-neutral';
+        html += `<td class="mono-cell ${cls}">${varStr}</td>`;
+      }
+      html += '</tr>';
+    });
+
+    body.innerHTML = html;
   }
 
   // Ranking dos tipos de ocorrência (códigos) — permite identificar de imediato
@@ -485,7 +613,7 @@
 
     if(rows.length===0){
       document.getElementById('tableBody').innerHTML =
-        `<tr><td colspan="12" style="text-align:center; padding:28px; color:var(--text-faint);">Nenhum registro corresponde aos filtros ou à busca atual.</td></tr>`;
+        `<tr><td colspan="14" style="text-align:center; padding:28px; color:var(--text-faint);">Nenhum registro corresponde aos filtros ou à busca atual.</td></tr>`;
       document.getElementById('pgInfo').textContent = 'Página 0 de 0';
       document.getElementById('pgPrev').disabled = true;
       document.getElementById('pgNext').disabled = true;
@@ -519,6 +647,8 @@
         <td>${esc(r.motorista)}</td>
         <td>${esc(r.cidade)}</td>
         <td class="mono-cell">${fmtBRLfull(r.valorFrete)}</td>
+        <td class="mono-cell">${fmtHM(r.tempoSeg)}</td>
+        <td class="mono-cell">${fmtNum(r.vols)}</td>
         <td class="mono-cell">${fmtNum(r.peso)}</td>
         <td class="mono-cell">${fmtNum(r.entregas)}</td>
         <td class="mono-cell">${fmtNum(r.realizadas)}</td>
@@ -553,9 +683,12 @@
     safeRenderChart(renderChartMeta, f, '#chartMeta');
     safeRenderChart(renderChartMotorista, f, '#chartMotorista');
     safeRenderChart(renderChartCidade, f, '#chartCidade');
+    safeRenderChart(renderChartVolumesMotorista, f, '#chartVolumesMotorista');
+    safeRenderChart(renderChartTempoMedioMotorista, f, '#chartTempoMedioMotorista');
     safeRenderChart(renderChartPeso, f, '#chartPeso');
     safeRenderChart(renderChartOcorrencia, f, '#chartOcorrencia');
     renderOccTypeRanking(f);
+    try{ renderCompareTable(); } catch(err){ console.error('Falha no comparativo mensal:', err); }
     try{ renderInsights(f); } catch(err){ console.error('Falha nos insights:', err); }
     try{ renderTable(f); } catch(err){ console.error('Falha na tabela:', err); }
   }

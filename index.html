@@ -123,6 +123,20 @@
 
   <section>
     <div class="section-head">
+      <h2>Comparativo Mensal <span>· Evolução dos Indicadores</span></h2>
+      <div class="section-sub" id="compareSub">Compara os meses disponíveis lado a lado — ignora o filtro de Mês; respeita Ano, Motorista, Cidade, Meta e Ocorrência</div>
+    </div>
+    <div class="table-panel">
+      <div class="table-scroll">
+        <table class="compare-table">
+          <tbody id="compareBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
       <h2>Ranking &amp; Rotas <span>· Motoristas e Cidades</span></h2>
       <div class="section-sub">Quem fatura mais e para onde vai a operação</div>
     </div>
@@ -138,6 +152,27 @@
           <div class="panel-title">Entregas por Cidade Destino<small>Realizadas vs. retornadas</small></div>
         </div>
         <div class="chart-box"><canvas id="chartCidade"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Análise Operacional <span>· Por Motorista</span></h2>
+      <div class="section-sub">Volume transportado e tempo médio de viagem de cada motorista</div>
+    </div>
+    <div class="charts-row equal">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Ranking de Volumes por Motorista<small>Total de volumes transportados no período filtrado</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartVolumesMotorista"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Ranking de Tempo Médio por Motorista<small>Média de tempo por viagem (HH:MM) no período filtrado</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartTempoMedioMotorista"></canvas></div>
       </div>
     </div>
   </section>
@@ -205,6 +240,8 @@
               <th data-key="motorista" tabindex="0" role="button" aria-sort="none">Motorista<span class="sort-arrow"></span></th>
               <th data-key="cidade" tabindex="0" role="button" aria-sort="none">Cidade<span class="sort-arrow"></span></th>
               <th data-key="valorFrete" tabindex="0" role="button" aria-sort="none">Frete (R$)<span class="sort-arrow"></span></th>
+              <th data-key="tempoSeg" tabindex="0" role="button" aria-sort="none">Tempo<span class="sort-arrow"></span></th>
+              <th data-key="vols" tabindex="0" role="button" aria-sort="none">Volumes<span class="sort-arrow"></span></th>
               <th data-key="peso" tabindex="0" role="button" aria-sort="none">Peso (kg)<span class="sort-arrow"></span></th>
               <th data-key="entregas" tabindex="0" role="button" aria-sort="none">Entregas<span class="sort-arrow"></span></th>
               <th data-key="realizadas" tabindex="0" role="button" aria-sort="none">Realiz.<span class="sort-arrow"></span></th>
