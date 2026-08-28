@@ -435,6 +435,100 @@
     });
   }
 
+  // Plugin genérico para desenhar o valor de cada barra logo acima dela,
+  // usado nos rankings de performance/meta por motorista (barras verticais)
+  // para deixar o valor visível mesmo sem passar o mouse (tooltip complementa).
+  function barValueLabelPlugin(formatFn){
+    return {
+      id: 'barValueLabel',
+      afterDatasetsDraw(chart){
+        const { ctx } = chart;
+        ctx.save();
+        ctx.font = "600 11px 'Inter', sans-serif";
+        ctx.fillStyle = PALETTE.dim;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        chart.data.datasets.forEach((ds, dsIndex)=>{
+          const meta = chart.getDatasetMeta(dsIndex);
+          meta.data.forEach((bar, i)=>{
+            const val = ds.data[i];
+            if(val===undefined || val===null) return;
+            ctx.fillText(formatFn(val), bar.x, bar.y - 6);
+          });
+        });
+        ctx.restore();
+      }
+    };
+  }
+
+  // Ranking · Performance de Entrega por Motorista (barras verticais)
+  // Mesma regra da KPI/ticker "Performance de Entrega": realizadas / entregas programadas.
+  function renderChartPerformanceEntrega(f){
+    destroyChart('performanceEntrega');
+    const byMot = {};
+    f.forEach(r=>{
+      if(!byMot[r.motorista]) byMot[r.motorista] = { entregas:0, realizadas:0 };
+      byMot[r.motorista].entregas += (r.entregas||0);
+      byMot[r.motorista].realizadas += (r.realizadas||0);
+    });
+    const sorted = Object.entries(byMot)
+      .filter(([,v])=> v.entregas>0)
+      .map(([mot,v])=>[mot, v.realizadas/v.entregas])
+      .sort((a,b)=>b[1]-a[1]);
+    const ctx = document.getElementById('chartPerformanceEntrega').getContext('2d');
+    charts.performanceEntrega = new Chart(ctx,{
+      type:'bar',
+      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map(x=> x[1]<0.96 ? PALETTE.danger : PALETTE.accent2), borderRadius:5, maxBarThickness:24 }]},
+      options:{
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:18 } },
+        plugins:{
+          legend:{display:false},
+          tooltip:{ callbacks:{ label:(c)=> `Performance: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 }
+        },
+        scales:{
+          x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } },
+          y:{ grid:{color:PALETTE.grid}, min:0, max:1, ticks:{ callback:(v)=>fmtPct(v) } }
+        }
+      },
+      plugins:[ barValueLabelPlugin(v=>fmtPct(v)) ]
+    });
+  }
+
+  // Ranking · Cumprimento de Meta por Motorista (barras verticais)
+  // Mesma regra da KPI "Cumprimento de Meta": viagens que "Atendeu a Meta" sobre
+  // o total de viagens com meta válida ("Atendeu a Meta" ou "Não Atendeu a Meta").
+  function renderChartCumprimentoMeta(f){
+    destroyChart('cumprimentoMeta');
+    const byMot = {};
+    f.forEach(r=>{
+      if(r.meta!=='Atendeu a Meta' && r.meta!=='Não Atendeu a Meta') return;
+      if(!byMot[r.motorista]) byMot[r.motorista] = { validos:0, ok:0 };
+      byMot[r.motorista].validos += 1;
+      if(r.meta==='Atendeu a Meta') byMot[r.motorista].ok += 1;
+    });
+    const sorted = Object.entries(byMot)
+      .filter(([,v])=> v.validos>0)
+      .map(([mot,v])=>[mot, v.ok/v.validos])
+      .sort((a,b)=>b[1]-a[1]);
+    const ctx = document.getElementById('chartCumprimentoMeta').getContext('2d');
+    charts.cumprimentoMeta = new Chart(ctx,{
+      type:'bar',
+      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:24 }]},
+      options:{
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:18 } },
+        plugins:{
+          legend:{display:false},
+          tooltip:{ callbacks:{ label:(c)=> `Cumprimento de meta: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 }
+        },
+        scales:{
+          x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } },
+          y:{ grid:{color:PALETTE.grid}, min:0, max:1, ticks:{ callback:(v)=>fmtPct(v) } }
+        }
+      },
+      plugins:[ barValueLabelPlugin(v=>fmtPct(v)) ]
+    });
+  }
+
   // ---------- Comparativo mensal ----------
   const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const periodLabel = (p) => { const [y,m] = p.split('-'); return `${MESES_ABREV[parseInt(m,10)-1]}/${y.slice(2)}`; };
@@ -685,6 +779,8 @@
     safeRenderChart(renderChartCidade, f, '#chartCidade');
     safeRenderChart(renderChartVolumesMotorista, f, '#chartVolumesMotorista');
     safeRenderChart(renderChartTempoMedioMotorista, f, '#chartTempoMedioMotorista');
+    safeRenderChart(renderChartPerformanceEntrega, f, '#chartPerformanceEntrega');
+    safeRenderChart(renderChartCumprimentoMeta, f, '#chartCumprimentoMeta');
     safeRenderChart(renderChartPeso, f, '#chartPeso');
     safeRenderChart(renderChartOcorrencia, f, '#chartOcorrencia');
     renderOccTypeRanking(f);
