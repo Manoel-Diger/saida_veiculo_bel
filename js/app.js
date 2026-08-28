@@ -443,7 +443,7 @@
       id: 'barValueLabel',
       afterDatasetsDraw(chart){
         const { ctx } = chart;
-        const compact = chart.width <= 520;
+        const compact = window.innerWidth <= 640 || chart.width <= 520;
         const fontSize = compact ? 9 : 11;
         ctx.save();
         ctx.font = `600 ${fontSize}px 'Inter', sans-serif`;
