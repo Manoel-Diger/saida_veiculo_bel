@@ -435,65 +435,6 @@
     });
   }
 
-  // Plugin genérico para desenhar o valor de cada barra logo acima dela,
-  // usado nos rankings de performance/meta por motorista (barras verticais)
-  // para deixar o valor visível mesmo sem passar o mouse (tooltip complementa).
-  function barValueLabelPlugin(formatFn){
-    return {
-      id: 'barValueLabel',
-      afterDatasetsDraw(chart){
-        const { ctx, chartArea } = chart;
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.fillStyle = PALETTE.dim;
-        chart.data.datasets.forEach((ds, dsIndex)=>{
-          const meta = chart.getDatasetMeta(dsIndex);
-          const n = meta.data.length;
-          meta.data.forEach((bar, i)=>{
-            const val = ds.data[i];
-            if(val===undefined || val===null) return;
-            const label = formatFn(val);
-
-            // Espaço horizontal disponível para este rótulo, com base na distância
-            // até as barras vizinhas — evita que rótulos se sobreponham quando há
-            // muitas barras em telas estreitas (celular).
-            const gapLeft = i>0 ? (bar.x - meta.data[i-1].x) : Infinity;
-            const gapRight = i<n-1 ? (meta.data[i+1].x - bar.x) : Infinity;
-            const slot = Math.min(gapLeft, gapRight, chartArea.width);
-
-            // A fonte diminui proporcionalmente ao espaço disponível (com piso
-            // mínimo legível) para caber em barras finas sem desconfigurar o texto.
-            const fontSize = Math.max(7.5, Math.min(11, slot*0.45));
-            ctx.font = `600 ${fontSize}px 'Inter', sans-serif`;
-
-            const textWidth = ctx.measureText(label).width;
-            // Se mesmo na fonte mínima o rótulo não cabe no espaço da barra,
-            // ele é omitido para não sobrepor o rótulo vizinho (o valor
-            // continua disponível via tooltip ao toque/clique na barra).
-            if(textWidth + 4 > slot) return;
-
-            // Posição horizontal centralizada na barra, mas presa dentro da
-            // área do gráfico para não vazar pelas bordas laterais.
-            const halfText = textWidth/2;
-            const x = Math.min(Math.max(bar.x, chartArea.left+halfText), chartArea.right-halfText);
-
-            // Posição vertical: por padrão acima da barra; se não houver espaço
-            // (barra próxima do topo do gráfico), o rótulo passa para dentro da
-            // área do gráfico, logo abaixo do seu topo.
-            let y = bar.y - 6;
-            ctx.textBaseline = 'bottom';
-            if(y - fontSize < chartArea.top){
-              y = chartArea.top + fontSize + 4;
-            }
-
-            ctx.fillText(label, x, y);
-          });
-        });
-        ctx.restore();
-      }
-    };
-  }
-
   // Ranking · Performance de Entrega por Motorista (barras verticais)
   // Mesma regra da KPI/ticker "Performance de Entrega": realizadas / entregas programadas.
   function renderChartPerformanceEntrega(f){
@@ -522,8 +463,7 @@
           x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } },
           y:{ grid:{color:PALETTE.grid}, min:0, max:1, ticks:{ callback:(v)=>fmtPct(v) } }
         }
-      },
-      plugins:[ barValueLabelPlugin(v=>fmtPct(v)) ]
+      }
     });
   }
 
@@ -557,8 +497,7 @@
           x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } },
           y:{ grid:{color:PALETTE.grid}, min:0, max:1, ticks:{ callback:(v)=>fmtPct(v) } }
         }
-      },
-      plugins:[ barValueLabelPlugin(v=>fmtPct(v)) ]
+      }
     });
   }
 
