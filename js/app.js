@@ -443,10 +443,8 @@
       id: 'barValueLabel',
       afterDatasetsDraw(chart){
         const { ctx } = chart;
-        const compact = window.innerWidth <= 640 || chart.width <= 520;
-        const fontSize = compact ? 9 : 11;
         ctx.save();
-        ctx.font = `600 ${fontSize}px 'Inter', sans-serif`;
+        ctx.font = "600 11px 'Inter', sans-serif";
         ctx.fillStyle = PALETTE.dim;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -455,19 +453,7 @@
           meta.data.forEach((bar, i)=>{
             const val = ds.data[i];
             if(val===undefined || val===null) return;
-            const label = formatFn(val);
-            if(!compact){
-              ctx.fillText(label, bar.x, bar.y - 6);
-              return;
-            }
-            const labelWidth = ctx.measureText(label).width;
-            const y = Math.max(chart.chartArea.top + labelWidth / 2, Math.min(bar.y - 6, chart.chartArea.bottom - labelWidth / 2));
-            const x = Math.max(chart.chartArea.left + fontSize / 2, Math.min(bar.x, chart.chartArea.right - fontSize / 2));
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(label, 0, 0);
-            ctx.restore();
+            ctx.fillText(formatFn(val), bar.x, bar.y - 6);
           });
         });
         ctx.restore();
