@@ -13,18 +13,18 @@
 
   // Legenda oficial dos códigos de ocorrência (fornecida pela operação).
   const OCC_LEGEND = {
-    '05': 'Destinatário alega mercadoria não pedida',
-    '08': 'Destinatário alega mercadoria em desacordo com o pedido',
-    '09': 'Destinatário ausente / estabelecimento fechado',
-    '10': 'Endereço do destinatário não localizado',
-    '13': 'Entrega prejudicada por horário',
-    '27': 'Excesso de veículos no local de entrega',
-    '29': 'Responsável pelo recebimento ausente',
-    '38': 'CTRC retido para conferência',
-    '42': 'Endereço de entrega modificado',
+    '05': 'Dest Alega Merc não Pedida',
+    '08': 'Dest Alega Merc Desac C/Pedido',
+    '09': 'Dest Ausente Fechado',
+    '10': 'Endereço Dest não Localizado',
+    '13': 'Entrega Prejudicada Horário',
+    '27': 'Excesso de Veiculos',
+    '29': 'Responsavel pelo recb Ausente',
+    '38': 'CTRC Retido',
+    '42': 'Endereço de Entrega Modificado',
     '63': 'Greve',
-    '66': 'Rodovia com acesso interrompido',
-    '79': 'Feriado local',
+    '66': 'Rodovia com Acesso Interrompido',
+    '79': 'Feriado',
   };
   const occLabel = (code) => OCC_LEGEND[code] ? `${code} · ${OCC_LEGEND[code]}` : `${code} · Outro código`;
 
@@ -245,6 +245,12 @@
   }
 
   // ---------- Charts ----------
+  // Prefixa o nome com a posição no ranking (ordem já calculada em cada render),
+  // ex.: índice 0 -> "01º - Edilson". Número com 2 dígitos (padStart) para que a coluna
+  // do nome fique alinhada visualmente entre 1º-9º e 10º em diante. Usado só para
+  // exibição (labels), sem alterar cálculos/ordem.
+  function rankLabel(index, name){ return `${String(index+1).padStart(2,'0')}º - ${name}`; }
+
   function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
 
   function safeRenderChart(fn, f, canvasSelector){
@@ -310,11 +316,11 @@
     const ctx = document.getElementById('chartMotorista').getContext('2d');
     charts.motorista = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:22 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:22 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }, y:{ grid:{display:false} } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
       }
     });
   }
@@ -327,7 +333,7 @@
     const ctx = document.getElementById('chartCidade').getContext('2d');
     charts.cidade = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map(x=>x[0]),
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])),
         datasets:[
           { label:'Realizadas', data: sorted.map(x=>x[1].real), backgroundColor:PALETTE.accent2, borderRadius:5, maxBarThickness:26 },
           { label:'Retornadas', data: sorted.map(x=>x[1].ret), backgroundColor:PALETTE.danger, borderRadius:5, maxBarThickness:26 }
@@ -348,7 +354,7 @@
     const ctx = document.getElementById('chartPeso').getContext('2d');
     charts.peso = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:24 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:24 }]},
       options:{
         responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtNum(c.parsed.y)+' kg' }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 } },
@@ -365,11 +371,11 @@
     const ctx = document.getElementById('chartVolumesMotorista').getContext('2d');
     charts.volumesMotorista = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:22 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:22 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x)+' volumes' }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } }, y:{ grid:{display:false} } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
       }
     });
   }
@@ -389,11 +395,11 @@
     const ctx = document.getElementById('chartTempoMedioMotorista').getContext('2d');
     charts.tempoMedioMotorista = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtHM(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, padding:10 } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtHM(v) } }, y:{ grid:{display:false} } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtHM(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
       }
     });
   }
@@ -421,7 +427,7 @@
     }
     charts.ocorrencia = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map(x=>x[0]),
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])),
         datasets:[
           { label:'Operacional (13 · falta de tempo)', data: sorted.map(x=>x[1].op), backgroundColor: PALETTE.danger, borderRadius:5, maxBarThickness:22 },
           { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }
@@ -430,7 +436,7 @@
         indexAxis:'y',
         responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true, ticks:{ crossAlign:'far' } } }
       }
     });
   }
@@ -452,7 +458,7 @@
     const ctx = document.getElementById('chartPerformanceEntrega').getContext('2d');
     charts.performanceEntrega = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map(x=> x[1]<0.96 ? PALETTE.danger : PALETTE.accent2), borderRadius:5, maxBarThickness:24 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map(x=> x[1]<0.96 ? PALETTE.danger : PALETTE.accent2), borderRadius:5, maxBarThickness:24 }]},
       options:{
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:18 } },
         plugins:{
@@ -486,7 +492,7 @@
     const ctx = document.getElementById('chartCumprimentoMeta').getContext('2d');
     charts.cumprimentoMeta = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map(x=>x[0]), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:24 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map(x=> x[1]<0.96 ? PALETTE.danger : PALETTE.accent3), borderRadius:5, maxBarThickness:24 }]},
       options:{
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:18 } },
         plugins:{
