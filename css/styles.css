@@ -282,6 +282,7 @@
   .badge.ok{background:var(--accent-2-soft); color:var(--accent-2);}
   .badge.no{background:var(--accent-danger-soft); color:var(--accent-danger);}
   .badge.na{background:var(--border-soft); color:var(--text-faint);}
+  .badge.rota{background:var(--accent-soft); color:var(--accent); font-family:var(--font-mono); font-weight:700;}
   .occ-flag{color:var(--accent-3); font-weight:700;}
   .occ-flag-critical{color:var(--accent-danger); font-weight:800;}
   .occ-none{color:var(--text-faint);}

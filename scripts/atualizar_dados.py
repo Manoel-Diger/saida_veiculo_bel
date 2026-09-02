@@ -81,6 +81,31 @@ def normalize_occurrence(raw):
     return []
 
 
+def parse_rota(raw):
+    """Converte o valor bruto da coluna 'Rota' em número inteiro (ou None).
+
+    O número 0 (ou vazio) significa "sem rota atribuída" e não deve ser tratado
+    como uma rota válida — apenas números a partir de 1 são considerados rotas.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, (int, float)):
+        valor = int(raw)
+        return valor if valor >= 1 else None
+    if isinstance(raw, str):
+        raw = raw.strip()
+        if raw == "":
+            return None
+        try:
+            valor = int(float(raw))
+        except ValueError:
+            return None
+        return valor if valor >= 1 else None
+    return None
+
+
 def clean_records(ws):
     rows = list(ws.iter_rows(min_row=2, values_only=True))
     headers = [c.value for c in ws[1]]
@@ -99,6 +124,7 @@ def clean_records(ws):
         rec["ano"] = d["Ano"]
         rec["mes"] = d["Mês"]
         rec["placa"] = d["Placa"]
+        rec["rota"] = parse_rota(d.get("Rota"))
         rec["motorista"] = d.get("Motorista") or "N/D"
         rec["valorFrete"] = float(d.get("Valor Frete") or 0)
         rec["valorMercadoria"] = float(d.get("Valor Mercadoria") or 0)

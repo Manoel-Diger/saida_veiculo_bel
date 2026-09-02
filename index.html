@@ -76,6 +76,10 @@
         <select id="fCidade"><option value="all">Todas</option></select>
       </div>
       <div class="filter-field">
+        <label>Rota</label>
+        <select id="fRota"><option value="all">Todas</option></select>
+      </div>
+      <div class="filter-field">
         <label>Meta</label>
         <select id="fMeta">
           <option value="all">Todas</option>
@@ -179,6 +183,52 @@
 
   <section>
     <div class="section-head">
+      <h2>Produtividade por Rota <span>· Comparativo de Rotas</span></h2>
+      <div class="section-sub" id="rotaSub">Compare o desempenho de cada rota no período filtrado — o número 0 da planilha não é rota e é desconsiderado</div>
+    </div>
+    <div class="charts-row equal">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Ranking de Produtividade por Rota<small>Entregas realizadas por hora de viagem em cada rota</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartProdutividadeRota"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Frete Faturado por Rota<small>Total faturado (R$) no período filtrado</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartFreteRota"></canvas></div>
+      </div>
+    </div>
+
+    <div class="table-panel" style="margin-top:16px;">
+      <div class="table-scroll">
+        <table class="compare-table">
+          <tbody id="rotaSummaryBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Ocorrências por Rota <span>· Ranking</span></h2>
+      <div class="section-sub">Rotas com maior quantidade de ocorrências no período filtrado</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Ocorrências por Rota<small>Total de ocorrências registradas em cada rota</small></div>
+        <div class="occ-legend">
+          <span><i class="dot operational"></i>13 · Operacional (nossa responsabilidade)</span>
+          <span><i class="dot commercial"></i>Demais códigos · Comercial</span>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="chartOcorrenciaRota"></canvas></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
       <h2>Rankings de Performance <span>· Por Motorista</span></h2>
       <div class="section-sub">Performance de entrega e cumprimento de meta de cada motorista no período filtrado</div>
     </div>
@@ -260,16 +310,17 @@
               <th data-key="placa" tabindex="0" role="button" aria-sort="none">Placa<span class="sort-arrow"></span></th>
               <th data-key="motorista" tabindex="0" role="button" aria-sort="none">Motorista<span class="sort-arrow"></span></th>
               <th data-key="cidade" tabindex="0" role="button" aria-sort="none">Cidade<span class="sort-arrow"></span></th>
-              <th data-key="valorFrete" tabindex="0" role="button" aria-sort="none">Frete (R$)<span class="sort-arrow"></span></th>
+              <th data-key="rota" tabindex="0" role="button" aria-sort="none" title="Rota">Rota<span class="sort-arrow"></span></th>
+              <th data-key="valorFrete" tabindex="0" role="button" aria-sort="none" title="Frete (R$)">Frete<span class="sort-arrow"></span></th>
               <th data-key="tempoSeg" tabindex="0" role="button" aria-sort="none">Tempo<span class="sort-arrow"></span></th>
-              <th data-key="vols" tabindex="0" role="button" aria-sort="none">Volumes<span class="sort-arrow"></span></th>
-              <th data-key="peso" tabindex="0" role="button" aria-sort="none">Peso (kg)<span class="sort-arrow"></span></th>
-              <th data-key="entregas" tabindex="0" role="button" aria-sort="none">Entregas<span class="sort-arrow"></span></th>
-              <th data-key="realizadas" tabindex="0" role="button" aria-sort="none">Realiz.<span class="sort-arrow"></span></th>
-              <th data-key="retornadas" tabindex="0" role="button" aria-sort="none">Retorn.<span class="sort-arrow"></span></th>
-              <th data-key="pctEntrega" tabindex="0" role="button" aria-sort="none">% Entrega<span class="sort-arrow"></span></th>
+              <th data-key="vols" tabindex="0" role="button" aria-sort="none" title="Volumes">Vols<span class="sort-arrow"></span></th>
+              <th data-key="peso" tabindex="0" role="button" aria-sort="none" title="Peso (kg)">Peso<span class="sort-arrow"></span></th>
+              <th data-key="entregas" tabindex="0" role="button" aria-sort="none" title="Entregas Programadas">Progr.<span class="sort-arrow"></span></th>
+              <th data-key="realizadas" tabindex="0" role="button" aria-sort="none" title="Realizadas">Realiz.<span class="sort-arrow"></span></th>
+              <th data-key="retornadas" tabindex="0" role="button" aria-sort="none" title="Retornadas">Retorn.<span class="sort-arrow"></span></th>
+              <th data-key="pctEntrega" tabindex="0" role="button" aria-sort="none" title="% Entrega">% Entr.<span class="sort-arrow"></span></th>
               <th data-key="meta" tabindex="0" role="button" aria-sort="none">Meta<span class="sort-arrow"></span></th>
-              <th data-key="ocorrencia" tabindex="0" role="button" aria-sort="none">Ocorrência<span class="sort-arrow"></span></th>
+              <th data-key="ocorrencia" tabindex="0" role="button" aria-sort="none" title="Ocorrência">Ocorr.<span class="sort-arrow"></span></th>
             </tr>
           </thead>
           <tbody id="tableBody"></tbody>

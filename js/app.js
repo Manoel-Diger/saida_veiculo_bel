@@ -69,6 +69,65 @@
     console.warn('Chart.js indisponível — os gráficos serão ocultados, mas KPIs, filtros, insights e tabela continuam funcionando.');
   }
 
+  // ---------- Rótulos de dados nos gráficos (somente desktop) ----------
+  // Breakpoint alinhado ao "mobile" já usado em css/styles.css (@media max-width:640px).
+  // Abaixo dele os rótulos ficam ocultos automaticamente, evitando sobreposição/poluição
+  // visual em telas estreitas — os tooltips continuam funcionando em qualquer tamanho de
+  // tela, pois não dependem deste plugin.
+  const isDesktopViewport = () => window.matchMedia('(min-width: 641px)').matches;
+
+  if(CHARTS_AVAILABLE){
+    Chart.register({
+      id: 'vitlogDataLabels',
+      afterDatasetsDraw(chart){
+        const opts = chart.config.options && chart.config.options.plugins && chart.config.options.plugins.vitlogDataLabels;
+        if(!opts || opts.display === false) return;
+        if(!isDesktopViewport()) return;
+
+        const type = chart.config.type;
+        const horizontal = chart.options.indexAxis === 'y';
+        const maxItems = opts.maxItems || 24;
+        const { ctx } = chart;
+
+        chart.data.datasets.forEach((dataset, dsIndex) => {
+          const meta = chart.getDatasetMeta(dsIndex);
+          if(meta.hidden || meta.data.length > maxItems) return;
+
+          meta.data.forEach((el, index) => {
+            const raw = dataset.data[index];
+            if(raw === null || raw === undefined) return;
+            if(typeof raw === 'number' && raw === 0) return; // não polui com zeros (ex.: ocorrências)
+
+            const text = opts.formatter ? opts.formatter(raw, dataset, index, dsIndex) : String(raw);
+            if(!text) return;
+
+            let x, y, align = 'center', baseline = 'middle';
+            if(type === 'doughnut'){
+              const pos = el.tooltipPosition();
+              x = pos.x; y = pos.y;
+            } else if(horizontal){
+              x = el.x + 6; y = el.y; align = 'left'; baseline = 'middle';
+            } else {
+              x = el.x; y = el.y - 8; align = 'center'; baseline = 'bottom';
+            }
+
+            ctx.save();
+            ctx.font = opts.font || '600 10.5px Inter, sans-serif';
+            ctx.textAlign = align;
+            ctx.textBaseline = baseline;
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = opts.strokeColor || 'rgba(8,13,22,0.85)';
+            ctx.strokeText(text, x, y);
+            ctx.fillStyle = opts.color || '#F2F5FB';
+            ctx.fillText(text, x, y);
+            ctx.restore();
+          });
+        });
+      }
+    });
+  }
+
   // ---------- Helpers ----------
   const ESC_MAP = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ESC_MAP[c]);
@@ -96,6 +155,11 @@
   motoristas.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; selMotorista.appendChild(o); });
   const selCidade = document.getElementById('fCidade');
   cidades.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; selCidade.appendChild(o); });
+
+  // Rotas presentes na base (números a partir de 1 — o valor 0/vazio é tratado como "sem rota")
+  const rotas = [...new Set(RAW.map(r=>r.rota).filter(r=>r!=null))].sort((a,b)=>a-b);
+  const selRota = document.getElementById('fRota');
+  rotas.forEach(r=>{ const o=document.createElement('option'); o.value=String(r); o.textContent=`Rota ${r}`; selRota.appendChild(o); });
 
   const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -140,7 +204,7 @@
     `Base "jan_26 (2)" · ${RAW.length} lançamentos · ${fmtDateFull(minDate)} a ${fmtDateFull(maxDate)}`;
 
   // ---------- State ----------
-  let state = { motorista:'all', cidade:'all', meta:'all', mes:'all', ano:'all', ocorrencia:'all', busca:'' };
+  let state = { motorista:'all', cidade:'all', rota:'all', meta:'all', mes:'all', ano:'all', ocorrencia:'all', busca:'' };
   let sortKey = 'data', sortDir = -1, page = 1, pageSize = 10;
   let charts = {};
 
@@ -149,6 +213,7 @@
     return RAW.filter(r=>{
       if(state.motorista!=='all' && r.motorista!==state.motorista) return false;
       if(state.cidade!=='all' && r.cidade!==state.cidade) return false;
+      if(state.rota!=='all' && String(r.rota)!==state.rota) return false;
       if(state.meta!=='all' && r.meta!==state.meta) return false;
       if(!opts.skipMes && state.mes!=='all' && r.data.slice(5,7)!==state.mes) return false;
       if(state.ano!=='all' && r.data.slice(0,4)!==state.ano) return false;
@@ -281,8 +346,9 @@
       type:'line',
       data:{ labels: labels.map(fmtDate), datasets:[{ data, borderColor:PALETTE.accent, backgroundColor:grad, borderWidth:2.5, pointRadius:2.5, pointBackgroundColor:PALETTE.accent, pointBorderColor:'#0A0A0A', tension:0.35, fill:true }]},
       options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtBRLfull(c.parsed.y) }, backgroundColor:'#16213A', borderColor:PALETTE.accent, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 } },
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:22 } },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtBRLfull(c.parsed.y) }, backgroundColor:'#16213A', borderColor:PALETTE.accent, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtBRL(v), maxItems:18 } },
         scales:{
           x:{ grid:{display:false}, ticks:{maxRotation:0, autoSkip:true, maxTicksLimit:9} },
           y:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }
@@ -303,7 +369,8 @@
       options:{
         responsive:true, maintainAspectRatio:false, cutout:'68%',
         plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } },
-          tooltip:{ backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 } }
+          tooltip:{ backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } }
       }
     });
   }
@@ -318,8 +385,9 @@
       type:'bar',
       data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:22 }]},
       options:{
-        indexAxis:'y', responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 } },
+        indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtBRL(v) } },
         scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
       }
     });
@@ -339,8 +407,9 @@
           { label:'Retornadas', data: sorted.map(x=>x[1].ret), backgroundColor:PALETTE.danger, borderRadius:5, maxBarThickness:26 }
         ]},
       options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10 } },
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:22 } },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
         scales:{ x:{ grid:{display:false} }, y:{ grid:{color:PALETTE.grid}, stacked:false } }
       }
     });
@@ -356,8 +425,9 @@
       type:'bar',
       data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:24 }]},
       options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtNum(c.parsed.y)+' kg' }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 } },
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:22 } },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtNum(c.parsed.y)+' kg' }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
         scales:{ x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } }, y:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } } }
       }
     });
@@ -373,8 +443,9 @@
       type:'bar',
       data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:22 }]},
       options:{
-        indexAxis:'y', responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x)+' volumes' }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 } },
+        indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x)+' volumes' }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
         scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
       }
     });
@@ -397,8 +468,9 @@
       type:'bar',
       data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }]},
       options:{
-        indexAxis:'y', responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtHM(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, padding:10 } },
+        indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:60 } },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtHM(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtHM(v) } },
         scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtHM(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
       }
     });
@@ -434,8 +506,9 @@
         ]},
       options:{
         indexAxis:'y',
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } } },
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:36 } },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } },
+          vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
         scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true, ticks:{ crossAlign:'far' } } }
       }
     });
@@ -460,10 +533,11 @@
       type:'bar',
       data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map(x=> x[1]<0.96 ? PALETTE.danger : PALETTE.accent2), borderRadius:5, maxBarThickness:24 }]},
       options:{
-        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:18 } },
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:24 } },
         plugins:{
           legend:{display:false},
-          tooltip:{ callbacks:{ label:(c)=> `Performance: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 }
+          tooltip:{ callbacks:{ label:(c)=> `Performance: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtPct(v) }
         },
         scales:{
           x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } },
@@ -494,15 +568,159 @@
       type:'bar',
       data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map(x=> x[1]<0.96 ? PALETTE.danger : PALETTE.accent3), borderRadius:5, maxBarThickness:24 }]},
       options:{
-        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:18 } },
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:24 } },
         plugins:{
           legend:{display:false},
-          tooltip:{ callbacks:{ label:(c)=> `Cumprimento de meta: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 }
+          tooltip:{ callbacks:{ label:(c)=> `Cumprimento de meta: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtPct(v) }
         },
         scales:{
           x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } },
           y:{ grid:{color:PALETTE.grid}, min:0, max:1, ticks:{ callback:(v)=>fmtPct(v) } }
         }
+      }
+    });
+  }
+
+  // ---------- Produtividade por Rota ----------
+  // Todas as análises por rota ignoram lançamentos sem rota atribuída (rota nula,
+  // originada do valor 0/vazio na planilha) — só entram rotas numeradas a partir de 1.
+  const rotaLabel = (rota) => `Rota ${rota}`;
+
+  // Consolida, por rota, os totais/base necessários para os gráficos e a tabela-resumo.
+  function computeRotaStats(f){
+    const rows = f.filter(r=>r.rota!=null);
+    const byRota = {};
+    rows.forEach(r=>{
+      if(!byRota[r.rota]) byRota[r.rota] = { viagens:0, entregas:0, realizadas:0, volumes:0, valorFrete:0, tempoTotal:0, tempoCount:0, metaValidos:0, metaOk:0 };
+      const s = byRota[r.rota];
+      s.viagens += 1;
+      s.entregas += (r.entregas||0);
+      s.realizadas += (r.realizadas||0);
+      s.volumes += (r.vols||0);
+      s.valorFrete += (r.valorFrete||0);
+      if(r.tempoSeg){ s.tempoTotal += r.tempoSeg; s.tempoCount += 1; }
+      if(r.meta==='Atendeu a Meta' || r.meta==='Não Atendeu a Meta'){
+        s.metaValidos += 1;
+        if(r.meta==='Atendeu a Meta') s.metaOk += 1;
+      }
+    });
+    return Object.entries(byRota).map(([rota,s])=>{
+      const horas = s.tempoTotal>0 ? s.tempoTotal/3600 : 0;
+      return {
+        rota: Number(rota), ...s, horas,
+        entregasPorHora: horas>0 ? s.realizadas/horas : 0,
+        volPorHora: horas>0 ? s.volumes/horas : 0,
+        perfEntrega: s.entregas>0 ? s.realizadas/s.entregas : 0,
+        pctMeta: s.metaValidos>0 ? s.metaOk/s.metaValidos : 0,
+        tempoMedio: s.tempoCount>0 ? s.tempoTotal/s.tempoCount : 0
+      };
+    });
+  }
+
+  // Ranking de Produtividade por Rota — entregas realizadas por hora de viagem em cada rota.
+  function renderChartProdutividadeRota(f){
+    destroyChart('produtividadeRota');
+    const sorted = computeRotaStats(f).filter(s=>s.horas>0).sort((a,b)=>b.entregasPorHora-a.entregasPorHora);
+    const ctx = document.getElementById('chartProdutividadeRota').getContext('2d');
+    charts.produtividadeRota = new Chart(ctx,{
+      type:'bar',
+      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.entregasPorHora), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:22 }]},
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x,2)+' entregas/h' }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtNum(v,2) } },
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v,1) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
+      }
+    });
+  }
+
+  // Frete Faturado por Rota — total faturado (R$) no período filtrado, por rota.
+  function renderChartFreteRota(f){
+    destroyChart('freteRota');
+    const sorted = computeRotaStats(f).sort((a,b)=>b.valorFrete-a.valorFrete);
+    const ctx = document.getElementById('chartFreteRota').getContext('2d');
+    charts.freteRota = new Chart(ctx,{
+      type:'bar',
+      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.valorFrete), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:22 }]},
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 },
+          vitlogDataLabels:{ formatter:(v)=>fmtBRL(v) } },
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
+      }
+    });
+  }
+
+  // Tabela-resumo por Rota — mesma ordenação do ranking de produtividade (entregas/h).
+  function renderRotaSummaryTable(f){
+    const body = document.getElementById('rotaSummaryBody');
+    if(!body) return;
+    const stats = computeRotaStats(f).sort((a,b)=>b.entregasPorHora-a.entregasPorHora);
+
+    let html = '<tr><th>Rota</th><th>Viagens</th><th>Entr. Realiz.</th><th>Volumes</th><th>Tempo Médio</th><th>Entregas/h</th><th>Vol/h</th><th>Perf. Entrega</th><th>Meta</th><th>Frete</th></tr>';
+
+    if(stats.length===0){
+      html += `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-faint);">Nenhuma rota corresponde aos filtros atuais.</td></tr>`;
+      body.innerHTML = html;
+      return;
+    }
+
+    stats.forEach((s,i)=>{
+      html += `<tr>
+        <td><span class="badge rota">${esc(rankLabel(i,rotaLabel(s.rota)))}</span></td>
+        <td class="mono-cell">${fmtNum(s.viagens)}</td>
+        <td class="mono-cell">${fmtNum(s.realizadas)} / ${fmtNum(s.entregas)}</td>
+        <td class="mono-cell">${fmtNum(s.volumes)}</td>
+        <td class="mono-cell">${s.tempoMedio>0 ? fmtHM(s.tempoMedio) : '—'}</td>
+        <td class="mono-cell">${s.horas>0 ? fmtNum(s.entregasPorHora,2) : '—'}</td>
+        <td class="mono-cell">${s.horas>0 ? fmtNum(s.volPorHora,1) : '—'}</td>
+        <td class="mono-cell">${fmtPct(s.perfEntrega)}</td>
+        <td class="mono-cell">${s.metaValidos>0 ? fmtPct(s.pctMeta) : '—'}</td>
+        <td class="mono-cell">${fmtBRLfull(s.valorFrete)}</td>
+      </tr>`;
+    });
+
+    body.innerHTML = html;
+  }
+
+  // Ocorrências por Rota — mesmo padrão do ranking "Principais Ofensores por Motorista",
+  // agrupado por rota em vez de motorista.
+  function renderChartOcorrenciaRota(f){
+    destroyChart('ocorrenciaRota');
+    const rows = f.filter(r=>r.rota!=null);
+    const byRota = {};
+    rows.forEach(r=>{
+      const codes = getRelevantCodes(r);
+      if(codes.length===0) return;
+      if(!byRota[r.rota]) byRota[r.rota] = { op:0, com:0 };
+      codes.forEach(c=>{
+        if(isOperationalCode(c)) byRota[r.rota].op++;
+        else byRota[r.rota].com++;
+      });
+    });
+    const sorted = Object.entries(byRota).sort((a,b)=> (b[1].op+b[1].com) - (a[1].op+a[1].com)).slice(0,8);
+    const ctx = document.getElementById('chartOcorrenciaRota').getContext('2d');
+    if(sorted.length===0){
+      charts.ocorrenciaRota = new Chart(ctx,{
+        type:'bar', data:{ labels:['Sem ocorrências'], datasets:[{data:[0], backgroundColor:PALETTE.accent2}]},
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ grid:{color:PALETTE.grid} }, x:{grid:{display:false}} } }
+      });
+      return;
+    }
+    charts.ocorrenciaRota = new Chart(ctx,{
+      type:'bar',
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,rotaLabel(x[0]))),
+        datasets:[
+          { label:'Operacional (13 · falta de tempo)', data: sorted.map(x=>x[1].op), backgroundColor: PALETTE.danger, borderRadius:5, maxBarThickness:22 },
+          { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }
+        ]},
+      options:{
+        indexAxis:'y',
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:36 } },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } },
+          vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
+        scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true, ticks:{ crossAlign:'far' } } }
       }
     });
   }
@@ -670,7 +888,7 @@
     let rows = f.filter(r=>{
       if(!state.busca) return true;
       const q = state.busca.toLowerCase();
-      return r.placa.toLowerCase().includes(q) || r.motorista.toLowerCase().includes(q) || r.cidade.toLowerCase().includes(q);
+      return r.placa.toLowerCase().includes(q) || r.motorista.toLowerCase().includes(q) || r.cidade.toLowerCase().includes(q) || (r.rota!=null && String(r.rota).includes(q));
     });
 
     rows = rows.slice().sort((a,b)=>{
@@ -685,7 +903,7 @@
 
     if(rows.length===0){
       document.getElementById('tableBody').innerHTML =
-        `<tr><td colspan="14" style="text-align:center; padding:28px; color:var(--text-faint);">Nenhum registro corresponde aos filtros ou à busca atual.</td></tr>`;
+        `<tr><td colspan="15" style="text-align:center; padding:28px; color:var(--text-faint);">Nenhum registro corresponde aos filtros ou à busca atual.</td></tr>`;
       document.getElementById('pgInfo').textContent = 'Página 0 de 0';
       document.getElementById('pgPrev').disabled = true;
       document.getElementById('pgNext').disabled = true;
@@ -718,6 +936,7 @@
         <td class="mono-cell">${esc(r.placa)}</td>
         <td>${esc(r.motorista)}</td>
         <td>${esc(r.cidade)}</td>
+        <td class="mono-cell">${r.rota!=null ? fmtNum(r.rota) : '—'}</td>
         <td class="mono-cell">${fmtBRLfull(r.valorFrete)}</td>
         <td class="mono-cell">${fmtHM(r.tempoSeg)}</td>
         <td class="mono-cell">${fmtNum(r.vols)}</td>
@@ -759,6 +978,10 @@
     safeRenderChart(renderChartTempoMedioMotorista, f, '#chartTempoMedioMotorista');
     safeRenderChart(renderChartPerformanceEntrega, f, '#chartPerformanceEntrega');
     safeRenderChart(renderChartCumprimentoMeta, f, '#chartCumprimentoMeta');
+    safeRenderChart(renderChartProdutividadeRota, f, '#chartProdutividadeRota');
+    safeRenderChart(renderChartFreteRota, f, '#chartFreteRota');
+    try{ renderRotaSummaryTable(f); } catch(err){ console.error('Falha na tabela-resumo por rota:', err); }
+    safeRenderChart(renderChartOcorrenciaRota, f, '#chartOcorrenciaRota');
     safeRenderChart(renderChartPeso, f, '#chartPeso');
     safeRenderChart(renderChartOcorrencia, f, '#chartOcorrencia');
     renderOccTypeRanking(f);
@@ -770,13 +993,14 @@
   // ---------- Events ----------
   selMotorista.addEventListener('change', e=>{ state.motorista=e.target.value; page=1; render(); });
   selCidade.addEventListener('change', e=>{ state.cidade=e.target.value; page=1; render(); });
+  selRota.addEventListener('change', e=>{ state.rota=e.target.value; page=1; render(); });
   document.getElementById('fMeta').addEventListener('change', e=>{ state.meta=e.target.value; page=1; render(); });
   selMes.addEventListener('change', e=>{ state.mes=e.target.value; page=1; render(); });
   selAno.addEventListener('change', e=>{ state.ano=e.target.value; page=1; render(); });
   selOcorrencia.addEventListener('change', e=>{ state.ocorrencia=e.target.value; page=1; render(); });
   document.getElementById('clearFilters').addEventListener('click', ()=>{
-    state = { motorista:'all', cidade:'all', meta:'all', mes:'all', ano:'all', ocorrencia:'all', busca:'' };
-    selMotorista.value='all'; selCidade.value='all'; document.getElementById('fMeta').value='all';
+    state = { motorista:'all', cidade:'all', rota:'all', meta:'all', mes:'all', ano:'all', ocorrencia:'all', busca:'' };
+    selMotorista.value='all'; selCidade.value='all'; selRota.value='all'; document.getElementById('fMeta').value='all';
     selMes.value='all'; selAno.value='all'; selOcorrencia.value='all'; document.getElementById('tableSearch').value='';
     page=1; render();
   });
@@ -828,7 +1052,7 @@
     const rows = getFiltered();
     if(rows.length===0){ showToast('Nenhum registro para exportar com os filtros atuais'); return; }
     const cols = [
-      ['data','Data'], ['placa','Placa'], ['motorista','Motorista'], ['cidade','Cidade'],
+      ['data','Data'], ['placa','Placa'], ['motorista','Motorista'], ['cidade','Cidade'], ['rota','Rota'],
       ['valorFrete','Valor Frete'], ['valorMercadoria','Valor Mercadoria'], ['peso','Peso (kg)'],
       ['entregas','Entregas'], ['realizadas','Realizadas'], ['retornadas','Retornadas'],
       ['pctEntrega','% Entrega'], ['meta','Meta'], ['ocorrencia','Código(s) Ocorrência'], ['ocorrenciaDesc','Descrição da(s) Ocorrência(s)']
