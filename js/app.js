@@ -625,7 +625,7 @@
     const ctx = document.getElementById('chartProdutividadeRota').getContext('2d');
     charts.produtividadeRota = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.entregasPorHora), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:22 }]},
+      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.entregasPorHora), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:16 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x,2)+' entregas/h' }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 },
@@ -642,7 +642,7 @@
     const ctx = document.getElementById('chartFreteRota').getContext('2d');
     charts.freteRota = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.valorFrete), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:22 }]},
+      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.valorFrete), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:16 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
         plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 },
@@ -653,12 +653,12 @@
   }
 
   // Tabela-resumo por Rota — mesma ordenação do ranking de produtividade (entregas/h).
-  function renderRotaSummaryTable(f){
+  function renderRotaTable(f){
     const body = document.getElementById('rotaSummaryBody');
     if(!body) return;
     const stats = computeRotaStats(f).sort((a,b)=>b.entregasPorHora-a.entregasPorHora);
 
-    let html = '<tr><th>Rota</th><th>Viagens</th><th>Entr. Realiz.</th><th>Volumes</th><th>Tempo Médio</th><th>Entregas/h</th><th>Vol/h</th><th>Perf. Entrega</th><th>Meta</th><th>Frete</th></tr>';
+    let html = '<tr><th>Rota</th><th>Viagens</th><th>Realiz./Entr.</th><th>Volumes</th><th>Tempo Médio</th><th>Entregas/h</th><th>Vol/h</th><th>Perf. Entrega</th><th>Meta</th><th>Frete</th></tr>';
 
     if(stats.length===0){
       html += `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-faint);">Nenhuma rota corresponde aos filtros atuais.</td></tr>`;
@@ -712,8 +712,8 @@
       type:'bar',
       data:{ labels: sorted.map((x,i)=>rankLabel(i,rotaLabel(x[0]))),
         datasets:[
-          { label:'Operacional (13 · falta de tempo)', data: sorted.map(x=>x[1].op), backgroundColor: PALETTE.danger, borderRadius:5, maxBarThickness:22 },
-          { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }
+          { label:'Operacional (13 · falta de tempo)', data: sorted.map(x=>x[1].op), backgroundColor: PALETTE.danger, borderRadius:5, maxBarThickness:16 },
+          { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:16 }
         ]},
       options:{
         indexAxis:'y',
@@ -903,7 +903,7 @@
 
     if(rows.length===0){
       document.getElementById('tableBody').innerHTML =
-        `<tr><td colspan="15" style="text-align:center; padding:28px; color:var(--text-faint);">Nenhum registro corresponde aos filtros ou à busca atual.</td></tr>`;
+        `<tr><td colspan="14" style="text-align:center; padding:28px; color:var(--text-faint);">Nenhum registro corresponde aos filtros ou à busca atual.</td></tr>`;
       document.getElementById('pgInfo').textContent = 'Página 0 de 0';
       document.getElementById('pgPrev').disabled = true;
       document.getElementById('pgNext').disabled = true;
@@ -941,8 +941,7 @@
         <td class="mono-cell">${fmtHM(r.tempoSeg)}</td>
         <td class="mono-cell">${fmtNum(r.vols)}</td>
         <td class="mono-cell">${fmtNum(r.peso)}</td>
-        <td class="mono-cell">${fmtNum(r.entregas)}</td>
-        <td class="mono-cell">${fmtNum(r.realizadas)}</td>
+        <td class="mono-cell">${fmtNum(r.realizadas)} / ${fmtNum(r.entregas)}</td>
         <td class="mono-cell">${fmtNum(r.retornadas)}</td>
         <td class="mono-cell">${fmtPct(r.pctEntrega)}</td>
         <td>${metaBadge(r.meta)}</td>
@@ -980,7 +979,7 @@
     safeRenderChart(renderChartCumprimentoMeta, f, '#chartCumprimentoMeta');
     safeRenderChart(renderChartProdutividadeRota, f, '#chartProdutividadeRota');
     safeRenderChart(renderChartFreteRota, f, '#chartFreteRota');
-    try{ renderRotaSummaryTable(f); } catch(err){ console.error('Falha na tabela-resumo por rota:', err); }
+    try{ renderRotaTable(f); } catch(err){ console.error('Falha na tabela-resumo por rota:', err); }
     safeRenderChart(renderChartOcorrenciaRota, f, '#chartOcorrenciaRota');
     safeRenderChart(renderChartPeso, f, '#chartPeso');
     safeRenderChart(renderChartOcorrencia, f, '#chartOcorrencia');
