@@ -6,7 +6,7 @@
 <title>Torre de Controle · Saída de Veículos · VitLog Belém</title>
 <meta name="description" content="Painel de indicadores operacionais e financeiros da frota VitLog Belém: faturamento, cumprimento de meta, entregas e ocorrências, com filtros por período, motorista e cidade.">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#080D16">
+<meta name="theme-color" content="#0A0F1A">
 <link rel="icon" type="image/png" href="assets/logo.png">
 <!--
   Fontes web (Google Fonts): usadas quando há internet disponível, com
@@ -21,111 +21,130 @@
 <script src="js/vendor/chart.umd.js"></script>
 </head>
 <body>
+<!-- Ticker informativo superior: preenchido dinamicamente por js/app.js (renderTicker) -->
+<div class="ticker" id="ticker" role="region" aria-label="Resumo operacional em tempo real">
+  <div class="ticker-label"><i class="ticker-dot" aria-hidden="true"></i><span>Torre de Controle</span></div>
+  <div class="ticker-viewport" id="tickerViewport" tabindex="0" aria-live="off"><div class="ticker-track" id="tickerTrack"></div></div>
+  <div class="ticker-meta" id="tickerDate"></div>
+</div>
 
-<header class="topbar">
-  <div class="brand">
-    <div class="brand-mark">
-      <img id="brandLogo" src="assets/logo.png" alt="VitLog Logo">
-    </div>
-    <div class="brand-text">
-      <div class="eyebrow"><span class="live-dot"></span>Torre de Controle · Operações</div>
-      <h1>Saída de Veículos — VitLog Belém</h1>
-      <p id="periodSub">Carregando período de análise…</p>
-    </div>
+<div class="app-shell">
+
+<aside class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <img id="brandLogo" src="assets/logo.png" alt="VitLog Logo">
+    <div class="sb-title">Saída de Veículos<small>Torre de Controle · Belém</small></div>
   </div>
-  <div class="top-actions">
-    <div class="clock-box">
-      <div class="clock-time" id="clockTime">--:--:--</div>
-      <div class="clock-label" id="lastUpdate">última atualização</div>
-    </div>
-    <button id="exportBtn" type="button" aria-label="Exportar registros filtrados em CSV">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+  <nav class="sb-nav" id="sbNav" aria-label="Seções do painel">
+    <a href="#sec-visao" data-sec="sec-visao" class="active"><svg viewBox="0 0 24 24"><path d="M3 12 12 4l9 8"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>Visão geral</a>
+    <a href="#sec-desempenho" data-sec="sec-desempenho"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m8 15 3-4 3 2 4-6"/></svg>Desempenho</a>
+    <a href="#sec-rankings" data-sec="sec-rankings"><svg viewBox="0 0 24 24"><path d="M7 20V10M12 20V4M17 20v-7"/></svg>Motoristas e cidades</a>
+    <a href="#sec-rotas" data-sec="sec-rotas"><svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/></svg>Rotas</a>
+    <a href="#sec-carga" data-sec="sec-carga"><svg viewBox="0 0 24 24"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Carga e ocorrências</a>
+    <a href="#sec-insights" data-sec="sec-insights"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3Z"/></svg>Insights</a>
+    <a href="#sec-registros" data-sec="sec-registros"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg>Registros</a>
+  </nav>
+  <div class="sb-foot">
+    <div class="clock-time" id="clockTime">--:--:--</div>
+    <div class="clock-label" id="lastUpdate">última atualização</div>
+  </div>
+</aside>
+
+<div class="app-main">
+
+<header class="page-head">
+  <div>
+    <h1>Saída de Veículos</h1>
+    <p id="periodSub">Carregando período de análise…</p>
+  </div>
+  <div class="ph-actions">
+    <button id="refreshBtn" type="button" class="btn">
+      <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v6h-6"/></svg>
+      <span id="refreshLabel">Atualizar Dados</span>
+    </button>
+    <button id="exportBtn" type="button" class="btn" aria-label="Exportar registros filtrados em CSV">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
       <span>Exportar CSV</span>
     </button>
-    <button id="refreshBtn" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v6h-6"/></svg>
-      <span id="refreshLabel">Atualizar Dados</span>
+    <button id="printBtn" type="button" class="btn btn-primary" aria-label="Imprimir ou salvar em PDF">
+      <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>
+      <span>Imprimir / PDF</span>
     </button>
   </div>
 </header>
 
-<div class="lane-divider"></div>
-
-<div class="ticker-wrap">
-  <div class="ticker-track" id="tickerTrack"></div>
+<div class="filters-row">
+  <div class="filter-field"><label for="fAno">Ano</label><select id="fAno"></select></div>
+  <div class="filter-field"><label for="fMes">Mês</label><select id="fMes"></select></div>
+  <div class="filter-field"><label for="fMotorista">Motorista</label><select id="fMotorista"><option value="all">Todos</option></select></div>
+  <div class="filter-field"><label for="fCidade">Cidade destino</label><select id="fCidade"><option value="all">Todas</option></select></div>
+  <div class="filter-field"><label for="fRota">Rota</label><select id="fRota"><option value="all">Todas</option></select></div>
+  <div class="filter-field"><label for="fMeta">Meta</label>
+    <select id="fMeta">
+      <option value="all">Todas</option>
+      <option value="Atendeu a Meta">Atendeu a meta</option>
+      <option value="Não Atendeu a Meta">Não atendeu a meta</option>
+    </select>
+  </div>
+  <div class="filter-field"><label for="fOcorrencia">Ocorrência</label><select id="fOcorrencia"></select></div>
+  <div class="filters-end">
+    <button id="clearFilters" type="button">Limpar filtros</button>
+  </div>
 </div>
 
 <main>
 
-  <section>
-    <div class="filters-bar">
-      <div class="filter-field">
-        <label>Mês</label>
-        <select id="fMes"></select>
+  <section id="sec-visao" data-group="sec-visao">
+    <div class="overview-panel">
+      <div>
+        <div class="ov-title">Visão consolidada do período</div>
+        <div class="ov-desc" id="kpiSub"></div>
       </div>
-      <div class="filter-field">
-        <label>Ano</label>
-        <select id="fAno"></select>
+      <div class="ov-pills">
+        <span class="filter-count" id="filterCount">— registros</span>
+        <span class="pill-soft" id="periodPill">—</span>
       </div>
-      <div class="filter-field">
-        <label>Motorista</label>
-        <select id="fMotorista"><option value="all">Todos</option></select>
-      </div>
-      <div class="filter-field">
-        <label>Cidade destino</label>
-        <select id="fCidade"><option value="all">Todas</option></select>
-      </div>
-      <div class="filter-field">
-        <label>Rota</label>
-        <select id="fRota"><option value="all">Todas</option></select>
-      </div>
-      <div class="filter-field">
-        <label>Meta</label>
-        <select id="fMeta">
-          <option value="all">Todas</option>
-          <option value="Atendeu a Meta">Atendeu a meta</option>
-          <option value="Não Atendeu a Meta">Não atendeu a meta</option>
-        </select>
-      </div>
-      <div class="filter-field">
-        <label>Ocorrência</label>
-        <select id="fOcorrencia"></select>
-      </div>
-      <button id="clearFilters">Limpar filtros</button>
-      <div class="filter-count" id="filterCount">— registros</div>
-    </div>
-  </section>
-
-  <section>
-    <div class="section-head">
-      <h2>Indicadores <span>· Visão Geral</span></h2>
-      <div class="section-sub" id="kpiSub"></div>
     </div>
     <div class="kpi-grid" id="kpiGrid"></div>
-  </section>
+    <div class="mini-strip-wrap">
+      <div class="strip-title">Indicadores complementares</div>
+      <div class="mini-strip" id="kpiExtra"></div>
+    </div>
 
-  <section>
-    <div class="section-head">
-      <h2>Desempenho Financeiro <span>&amp; Operacional</span></h2>
-      <div class="section-sub">Evolução diária do frete e cumprimento de meta</div>
+    <div class="charts-row">
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Faturamento em frete — mês a mês<small>Frete (R$) por mês, comparando os anos</small></div></div>
+        <div class="chart-box"><canvas id="chartFreteMensal"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Viagens — mês a mês<small>Quantidade de viagens por mês, comparando os anos</small></div></div>
+        <div class="chart-box"><canvas id="chartViagensMensal"></canvas></div>
+      </div>
     </div>
     <div class="charts-row">
       <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Evolução do Frete<small>Valor faturado por dia de saída (R$)</small></div>
-        </div>
-        <div class="chart-box tall"><canvas id="chartFrete"></canvas></div>
+        <div class="panel-head"><div class="panel-title">Volumes — mês a mês<small>Volumes transportados por mês, comparando os anos</small></div></div>
+        <div class="chart-box"><canvas id="chartVolumesMensal"></canvas></div>
       </div>
       <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Cumprimento de Meta<small>Percentual de viagens no período</small></div>
-        </div>
-        <div class="chart-box tall"><canvas id="chartMeta"></canvas></div>
+        <div class="panel-head"><div class="panel-title">Cumprimento de Meta<small>Percentual de viagens no período</small></div></div>
+        <div class="chart-box"><canvas id="chartMeta"></canvas></div>
       </div>
     </div>
   </section>
 
-  <section>
+  <section id="sec-desempenho" data-group="sec-desempenho">
+    <div class="section-head">
+      <h2>Desempenho <span>· Evolução diária do frete</span></h2>
+      <div class="section-sub">Valor faturado por dia de saída</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Evolução do Frete<small>Valor faturado por dia de saída (R$)</small></div></div>
+      <div class="chart-box tall"><canvas id="chartFrete"></canvas></div>
+    </div>
+  </section>
+
+  <section id="sec-comparativo" data-group="sec-desempenho">
     <div class="section-head">
       <h2>Comparativo Mensal <span>· Evolução dos Indicadores</span></h2>
       <div class="section-sub" id="compareSub">Compara os meses disponíveis lado a lado — ignora o filtro de Mês; respeita Ano, Motorista, Cidade, Meta e Ocorrência</div>
@@ -139,7 +158,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="sec-rankings" data-group="sec-rankings">
     <div class="section-head">
       <h2>Ranking &amp; Rotas <span>· Motoristas e Cidades</span></h2>
       <div class="section-sub">Quem fatura mais e para onde vai a operação</div>
@@ -160,7 +179,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="sec-operacional" data-group="sec-rankings">
     <div class="section-head">
       <h2>Análise Operacional <span>· Por Motorista</span></h2>
       <div class="section-sub">Volume transportado e tempo médio de viagem de cada motorista</div>
@@ -181,53 +200,7 @@
     </div>
   </section>
 
-  <section>
-    <div class="section-head">
-      <h2>Produtividade por Rota <span>· Comparativo de Rotas</span></h2>
-      <div class="section-sub" id="rotaSub">Compare o desempenho de cada rota no período filtrado</div>
-    </div>
-    <div class="charts-row equal">
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Ranking de Produtividade por Rota<small>Entregas realizadas por hora de viagem em cada rota</small></div>
-        </div>
-        <div class="chart-box"><canvas id="chartProdutividadeRota"></canvas></div>
-      </div>
-      <div class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Frete Faturado por Rota<small>Total faturado (R$) no período filtrado</small></div>
-        </div>
-        <div class="chart-box"><canvas id="chartFreteRota"></canvas></div>
-      </div>
-    </div>
-
-    <div class="table-panel" style="margin-top:16px;">
-      <div class="table-scroll">
-        <table class="compare-table">
-          <tbody id="rotaSummaryBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="section-head">
-      <h2>Ocorrências por Rota <span>· Ranking</span></h2>
-      <div class="section-sub">Rotas com maior quantidade de ocorrências no período filtrado</div>
-    </div>
-    <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">Ocorrências por Rota<small>Total de ocorrências registradas em cada rota</small></div>
-        <div class="occ-legend">
-          <span><i class="dot operational"></i>13 · Operacional (nossa responsabilidade)</span>
-          <span><i class="dot commercial"></i>Demais códigos · Comercial</span>
-        </div>
-      </div>
-      <div class="chart-box"><canvas id="chartOcorrenciaRota"></canvas></div>
-    </div>
-  </section>
-
-  <section>
+  <section id="sec-performance" data-group="sec-rankings">
     <div class="section-head">
       <h2>Rankings de Performance <span>· Por Motorista</span></h2>
       <div class="section-sub">Performance de entrega e cumprimento de meta de cada motorista no período filtrado</div>
@@ -248,7 +221,53 @@
     </div>
   </section>
 
-  <section>
+  <section id="sec-rotas" data-group="sec-rotas">
+    <div class="section-head">
+      <h2>Produtividade por Rota <span>· Comparativo de Rotas</span></h2>
+      <div class="section-sub" id="rotaSub">Compare o desempenho de cada rota no período filtrado</div>
+    </div>
+    <div class="charts-row equal">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Ranking de Produtividade por Rota<small>Entregas realizadas por hora de viagem em cada rota</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartProdutividadeRota"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Frete Faturado por Rota<small>Total faturado (R$) no período filtrado</small></div>
+        </div>
+        <div class="chart-box"><canvas id="chartFreteRota"></canvas></div>
+      </div>
+    </div>
+
+    <div class="table-panel" style="margin-top:12px;">
+      <div class="table-scroll">
+        <table class="compare-table">
+          <tbody id="rotaSummaryBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="sec-ocorrencias-rota" data-group="sec-rotas">
+    <div class="section-head">
+      <h2>Ocorrências por Rota <span>· Ranking</span></h2>
+      <div class="section-sub">Rotas com maior quantidade de ocorrências no período filtrado</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Ocorrências por Rota<small>Total de ocorrências registradas em cada rota</small></div>
+        <div class="occ-legend">
+          <span><i class="dot operational"></i>13 · Operacional (nossa responsabilidade)</span>
+          <span><i class="dot commercial"></i>Demais códigos · Comercial</span>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="chartOcorrenciaRota"></canvas></div>
+    </div>
+  </section>
+
+  <section id="sec-carga" data-group="sec-carga">
     <div class="section-head">
       <h2>Carga &amp; Ocorrências <span>· Atenção Operacional</span></h2>
       <div class="section-sub">Peso transportado e pontos de atenção nas viagens</div>
@@ -268,7 +287,7 @@
       </div>
     </div>
 
-    <div class="panel" style="margin-top:16px;">
+    <div class="panel" style="margin-top:12px;">
       <div class="panel-head">
         <div class="panel-title">Principais Ofensores · por Tipo de Ocorrência<small>Segmentação por código, do mais para o menos frequente no período filtrado</small></div>
         <div class="occ-legend">
@@ -280,14 +299,14 @@
     </div>
   </section>
 
-  <section>
+  <section id="sec-insights" data-group="sec-insights">
     <div class="section-head">
       <h2>Leitura da Operação <span>· Insights Automáticos</span></h2>
     </div>
     <div class="insight-grid" id="insightGrid"></div>
   </section>
 
-  <section>
+  <section id="sec-registros" data-group="sec-registros">
     <div class="section-head">
       <h2>Registros Detalhados <span>· Lançamentos de Saída</span></h2>
       <div class="section-sub">Base: aba "jan_26 (2)" — clique nos cabeçalhos para ordenar</div>
@@ -337,8 +356,6 @@
 
 </main>
 
-<div class="lane-divider"></div>
-
 <footer>
   <div class="footer-top">
     <div class="footer-left">
@@ -367,6 +384,10 @@
     Fonte: <b>Romaneios de saída de veículos SSW, consolidados na base Excel "Saída de Veículos".</b>
   </div>
 </footer>
+
+</div><!-- /app-main -->
+</div><!-- /app-shell -->
+
 
 <div id="toast" role="status" aria-live="polite">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>

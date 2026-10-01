@@ -5,10 +5,13 @@
   }
   const RAW = VITLOG_DATA;
 
+  // Paleta azul (destaques, métricas e "dentro da meta") · vermelho = abaixo da meta/alertas ·
+  // azul-claro = ocorrências comerciais (contrapondo o vermelho operacional).
   const PALETTE = {
-    accent:'#4D8DFF', accent2:'#34D399', accent3:'#F5B94D',
-    danger:'#EF6B6B', blue:'#4D8DFF', dim:'#93A1BC', faint:'#5C6A85',
-    grid:'rgba(255,255,255,0.06)', panel:'#111A2B'
+    primary:'#4A7BA8', accent:'#4A7BA8', accent2:'#4A7BA8', commercial:'#7FA6CC',
+    danger:'#F2555A', blue:'#3F6C9A', indigo:'#3F6C9A', cyan:'#5B87B3', violet:'#7FA6CC',
+    sky:'#6F9BC4', slate:'#8FA0BA', dim:'#8FA0BA', faint:'#6C7D98',
+    grid:'rgba(141,184,232,0.08)', panel:'#101A2C'
   };
 
   // Legenda oficial dos códigos de ocorrência (fornecida pela operação).
@@ -64,7 +67,14 @@
   if(CHARTS_AVAILABLE){
     Chart.defaults.font.family = "'Inter', sans-serif";
     Chart.defaults.color = PALETTE.dim;
-    Chart.defaults.font.size = 11.5;
+    Chart.defaults.font.size = 10;
+    Chart.defaults.scale.border = { display:false };
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.plugins.legend.labels.pointStyle = 'rectRounded';
+    Object.assign(Chart.defaults.plugins.tooltip, {
+      cornerRadius:10, borderColor:'rgba(141,184,232,0.28)', borderWidth:1,
+      titleFont:{ weight:'700', size:12 }, boxPadding:4
+    });
   } else {
     console.warn('Chart.js indisponível — os gráficos serão ocultados, mas KPIs, filtros, insights e tabela continuam funcionando.');
   }
@@ -112,12 +122,12 @@
             }
 
             ctx.save();
-            ctx.font = opts.font || '600 10.5px Inter, sans-serif';
+            ctx.font = opts.font || '600 9px Inter, sans-serif';
             ctx.textAlign = align;
             ctx.textBaseline = baseline;
             ctx.lineJoin = 'round';
             ctx.lineWidth = 3;
-            ctx.strokeStyle = opts.strokeColor || 'rgba(8,13,22,0.85)';
+            ctx.strokeStyle = opts.strokeColor || 'rgba(10,15,26,0.88)';
             ctx.strokeText(text, x, y);
             ctx.fillStyle = opts.color || '#F2F5FB';
             ctx.fillText(text, x, y);
@@ -126,6 +136,14 @@
         });
       }
     });
+  }
+
+  // ---------- Conversão hex → rgb (usada no sombreamento por ano) ----------
+  function hexToRgb(hex){
+    const m = /^#([0-9a-f]{6})$/i.exec(String(hex||'').trim());
+    if(!m) return null;
+    const n = parseInt(m[1],16);
+    return [(n>>16)&255, (n>>8)&255, n&255];
   }
 
   // ---------- Helpers ----------
@@ -168,7 +186,7 @@
 
   const selMes = document.getElementById('fMes');
   (() => {
-    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Mês';
+    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Todos os meses';
     selMes.appendChild(oAll);
     mesesPresentes.forEach(m=>{ const o=document.createElement('option'); o.value=String(m).padStart(2,'0'); o.textContent=MESES_PT[m-1]; selMes.appendChild(o); });
     selMes.value='all';
@@ -176,7 +194,7 @@
 
   const selAno = document.getElementById('fAno');
   (() => {
-    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Ano';
+    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Todos os anos';
     selAno.appendChild(oAll);
     anosPresentes.forEach(a=>{ const o=document.createElement('option'); o.value=a; o.textContent=a; selAno.appendChild(o); });
     selAno.value='all';
@@ -189,7 +207,7 @@
 
   const selOcorrencia = document.getElementById('fOcorrencia');
   (() => {
-    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Ocorrência (todas)';
+    const oAll = document.createElement('option'); oAll.value='all'; oAll.textContent='Todas';
     selOcorrencia.appendChild(oAll);
     const oNone = document.createElement('option'); oNone.value='none'; oNone.textContent='Sem ocorrência';
     selOcorrencia.appendChild(oNone);
@@ -237,12 +255,19 @@
     package: '<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'
   };
 
-  function kpiCard(label, value, sub, color, icon){
-    return `<div class="kpi-card" style="--kpi-color:${color}">
-      <div class="kpi-label"><svg class="kpi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>${label}</div>
+  // Meta de referência já usada nos rankings (vermelho abaixo de 96%).
+  const TARGET_PCT = 0.96;
+  const MES_ABR = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  function kpiCard(label, value, sub, pillText, pillClass, extraClass){
+    return `<div class="kpi-card${extraClass ? ' '+extraClass : ''}">
+      <div class="kpi-top"><span class="kpi-label">${label}</span><span class="pill ${pillClass}">${pillText}</span></div>
       <div class="kpi-value">${value}</div>
       <div class="kpi-sub">${sub}</div>
     </div>`;
+  }
+  function miniItem(label, value, sub){
+    return `<div class="mini-item"><div class="mini-label">${label}</div><div class="mini-value">${value}</div><div class="mini-sub">${sub}</div></div>`;
   }
 
   function renderKPIs(f){
@@ -262,51 +287,35 @@
     const kmValidos = f.filter(r=>r.kmDia>0);
     const totalKm = sum(kmValidos,r=>r.kmDia);
 
+    const metaOkStatus = pctMeta >= TARGET_PCT, perfOkStatus = taxaSucesso >= TARGET_PCT;
+
+    // Seis KPIs principais: Frete (destaque), Viagens, Peso, Meta, Performance e Ocorrências.
     const cards = [
-      kpiCard('Viagens no período', fmtNum(f.length), `<b>${motoristas.length}</b> motoristas · <b>${cidades.length}</b> destinos`, PALETTE.accent, kpiIcons.viagens),
-      kpiCard('Faturamento em Frete', fmtBRL(totalFrete), `Ticket médio <b>${fmtBRL(f.length? totalFrete/f.length:0)}</b>/viagem`, PALETTE.accent, kpiIcons.money),
-      kpiCard('Valor em Mercadoria', fmtBRL(totalMercadoria), `Transportado no período filtrado`, PALETTE.blue, kpiIcons.box),
-      kpiCard('Peso Transportado', fmtNum(totalPeso) + ' kg', `≈ <b>${fmtNum(totalPeso/1000,1)} t</b> no período`, PALETTE.blue, kpiIcons.scale),
-      kpiCard('Entregas Concluídas', `${fmtNum(totalRealizadas)} / ${fmtNum(totalEntregas)}`, `<b>${fmtNum(totalRetornadas)}</b> notas retornadas`, PALETTE.accent2, kpiIcons.check),
-      kpiCard('Performance de Entrega', fmtPct(taxaSucesso), `Realizadas sobre total programado`, PALETTE.accent2, kpiIcons.check),
-      kpiCard('Frete sobre Mercadoria', fmtPct(avgPctFrete), `Percentual médio sobre valor de mercadoria`, PALETTE.accent3, kpiIcons.percent),
-      kpiCard('Quantidade de Volumes', fmtNum(totalVolumes), `Total transportado no período`, PALETTE.accent2, kpiIcons.package),
-      kpiCard('Cumprimento de Meta', fmtPct(pctMeta), `<b>${fmtNum(metaOk)}</b> de <b>${fmtNum(metaValidos.length)}</b> viagens válidas atenderam a meta`, PALETTE.accent3, kpiIcons.target),
-      kpiCard('Km Rodados', fmtNum(totalKm), `Média de <b>${fmtNum(kmValidos.length? totalKm/kmValidos.length:0,1)} km</b>/viagem no período`, PALETTE.dim, kpiIcons.road),
-      kpiCard('Ocorrências Registradas', fmtNum(occ.total), `Em <b>${fmtPct(f.length? occ.viagensComOcorrencia/f.length:0)}</b> das viagens do período`, PALETTE.danger, kpiIcons.alert),
+      kpiCard('Faturamento em Frete', fmtBRL(totalFrete), `Ticket médio <b>${fmtBRL(f.length? totalFrete/f.length:0)}</b>/viagem · <b>${fmtNum(f.length)}</b> viagens`, 'Total', 'accent', 'kpi-hero'),
+      kpiCard('Viagens no período', fmtNum(f.length), `<b>${motoristas.length}</b> motoristas · <b>${cidades.length}</b> destinos`, 'Operação', 'blue'),
+      kpiCard('Peso Transportado', fmtNum(totalPeso) + '<span class="kpi-unit">kg</span>', `≈ <b>${fmtNum(totalPeso/1000,1)} t</b> no período`, 'Carga', 'blue'),
+      kpiCard('Cumprimento de Meta', fmtPct(pctMeta), `<b>${fmtNum(metaOk)}</b> de <b>${fmtNum(metaValidos.length)}</b> viagens válidas atenderam a meta`, metaOkStatus ? 'Na meta' : 'Abaixo de 96%', metaOkStatus ? 'green' : 'red'),
+      kpiCard('Performance de Entrega', fmtPct(taxaSucesso), `Realizadas sobre total programado`, perfOkStatus ? 'Na meta' : 'Abaixo de 96%', perfOkStatus ? 'green' : 'red'),
+      kpiCard('Ocorrências Registradas', fmtNum(occ.total), `Em <b>${fmtPct(f.length? occ.viagensComOcorrencia/f.length:0)}</b> das viagens do período`, occ.total>0 ? 'Atenção' : 'Sem ocorrências', occ.total>0 ? 'red' : 'green'),
     ];
     document.getElementById('kpiGrid').innerHTML = cards.join('');
-    const kpiSubMes = state.mes==='all' ? 'Mês' : MESES_PT[parseInt(state.mes,10)-1];
-    const kpiSubAno = state.ano==='all' ? 'Ano' : state.ano;
-    document.getElementById('kpiSub').textContent = `${kpiSubMes} · ${kpiSubAno}`;
+
+    // Demais indicadores originais, em faixa compacta (nenhuma métrica foi removida).
+    document.getElementById('kpiExtra').innerHTML = [
+      miniItem('Valor em Mercadoria', fmtBRL(totalMercadoria), 'Transportado no período filtrado'),
+      miniItem('Entregas Concluídas', `${fmtNum(totalRealizadas)} / ${fmtNum(totalEntregas)}`, `<b>${fmtNum(totalRetornadas)}</b> notas retornadas`),
+      miniItem('Frete sobre Mercadoria', fmtPct(avgPctFrete), 'Percentual médio sobre valor de mercadoria'),
+      miniItem('Quantidade de Volumes', fmtNum(totalVolumes), 'Total transportado no período'),
+      miniItem('Km Rodados', fmtNum(totalKm), `Média de <b>${fmtNum(kmValidos.length? totalKm/kmValidos.length:0,1)} km</b>/viagem`),
+    ].join('');
+
+    const kpiSubMes = state.mes==='all' ? 'Todos os meses' : MESES_PT[parseInt(state.mes,10)-1];
+    const kpiSubAno = state.ano==='all' ? 'todos os anos' : state.ano;
+    document.getElementById('kpiSub').textContent =
+      `Período: ${kpiSubMes} · ${kpiSubAno}. Filtros de Motorista, Cidade, Rota, Meta e Ocorrência aplicados ao período inteiro.`;
+    const nMeses = new Set(f.map(r=>r.data.slice(0,7))).size;
+    document.getElementById('periodPill').textContent = `${nMeses} ${nMeses===1 ? 'mês' : 'meses'}`;
     document.getElementById('filterCount').textContent = `${f.length} de ${RAW.length} registros`;
-  }
-
-  // ---------- Ticker ----------
-  function renderTicker(f){
-    const totalFrete = sum(f,r=>r.valorFrete);
-    const totalMercadoria = sum(f,r=>r.valorMercadoria);
-    const totalPeso = sum(f,r=>r.peso);
-    const totalVolumes = sum(f,r=>r.vols);
-    const totalEntregas = sum(f,r=>r.entregas);
-    const totalRealizadas = sum(f,r=>r.realizadas);
-    const taxaSucesso = totalEntregas>0 ? totalRealizadas/totalEntregas : 0;
-    const avgPctFrete = totalMercadoria > 0 ? totalFrete / totalMercadoria : 0;
-    const topMotorista = Object.entries(f.reduce((a,r)=>{a[r.motorista]=(a[r.motorista]||0)+r.valorFrete; return a;},{})).sort((a,b)=>b[1]-a[1])[0];
-
-    const items = [
-      `VIAGENS <b>${fmtNum(f.length)}</b>`,
-      `FRETE TOTAL <b>${fmtBRL(totalFrete)}</b>`,
-      `MERCADORIA <b>${fmtBRL(totalMercadoria)}</b>`,
-      `PESO <b>${fmtNum(totalPeso)} KG</b>`,
-      `Performance de Entrega <b>${fmtPct(taxaSucesso)}</b>`,
-      `% de Frete <b>${fmtPct(avgPctFrete)}</b>`,
-      `Quantidade de Volumes <b>${fmtNum(totalVolumes)}</b>`,
-      topMotorista ? `DESTAQUE <b>${esc(topMotorista[0].toUpperCase())}</b>` : ''
-    ].filter(Boolean);
-
-    const html = items.map(t=>`<span class="ticker-item">${t}</span><span class="ticker-item dot">◆</span>`).join('');
-    document.getElementById('tickerTrack').innerHTML = html + html; // duplicate for seamless loop
   }
 
   // ---------- Charts ----------
@@ -332,6 +341,56 @@
     catch(err){ console.error('Falha ao renderizar gráfico:', err); }
   }
 
+  // ---------- Tendência mês a mês (comparação entre anos) ----------
+  // Uma série por ano, no eixo Jan–Dez. Ignora o filtro de Mês (como o Comparativo Mensal)
+  // e respeita Ano, Motorista, Cidade, Rota, Meta e Ocorrência. O ano mais antigo usa um
+  // tom mais claro e o mais recente o tom pleno da cor do indicador.
+  function yearShade(hex, idx, n){
+    const rgb = hexToRgb(hex); if(!rgb || n<=1) return hex;
+    const t = ((n-1-idx)/(n-1))*0.55;
+    const m = (c)=> Math.round(c + (255-c)*t).toString(16).padStart(2,'0');
+    return '#' + m(rgb[0]) + m(rgb[1]) + m(rgb[2]);
+  }
+  const fmtBRLShort = (v)=>{
+    if(Math.abs(v)>=1e6) return 'R$ ' + fmtNum(v/1e6,1) + ' mi';
+    if(Math.abs(v)>=1e3) return 'R$ ' + fmtNum(v/1e3,0) + ' mil';
+    return 'R$ ' + fmtNum(v,0);
+  };
+
+  function renderMonthlyChart(key, canvasId, valueFn, baseColor, axisFmt, tipFmt){
+    destroyChart(key);
+    const rows = getFiltered({ skipMes:true });
+    const years = [...new Set(rows.map(r=>r.data.slice(0,4)))].sort();
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const datasets = years.map((y,i)=>{
+      const byMonth = {};
+      rows.forEach(r=>{ if(r.data.slice(0,4)!==y) return; const m = parseInt(r.data.slice(5,7),10)-1; (byMonth[m] = byMonth[m]||[]).push(r); });
+      const data = Array.from({length:12}, (_,m)=> byMonth[m] ? valueFn(byMonth[m]) : null);
+      return { label:y, data, backgroundColor:yearShade(baseColor,i,years.length), borderWidth:0,
+               borderRadius:{ topLeft:6, topRight:6 }, borderSkipped:false, maxBarThickness:30 };
+    });
+    charts[key] = new Chart(ctx,{
+      type:'bar',
+      data:{ labels:MES_ABR, datasets },
+      options:{
+        responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:6 } },
+        plugins:{
+          legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:14, font:{size:10} } },
+          tooltip:{ callbacks:{ title:(items)=> MESES_PT[items[0].dataIndex], label:(c)=> `${c.dataset.label}: ${tipFmt(c.parsed.y)}` },
+                    backgroundColor:'#0B1424', borderColor:baseColor, borderWidth:1, padding:10 },
+          vitlogDataLabels:{ display:false }
+        },
+        scales:{
+          x:{ grid:{ display:false } },
+          y:{ beginAtZero:true, grid:{ color:PALETTE.grid }, ticks:{ callback:(v)=> axisFmt(v) } }
+        }
+      }
+    });
+  }
+  function renderChartFreteMensal(){ renderMonthlyChart('freteMensal','chartFreteMensal', rs=>sum(rs,r=>r.valorFrete), PALETTE.primary, fmtBRLShort, fmtBRLfull); }
+  function renderChartViagensMensal(){ renderMonthlyChart('viagensMensal','chartViagensMensal', rs=>rs.length, PALETTE.blue, v=>fmtNum(v), v=>fmtNum(v)+' viagens'); }
+  function renderChartVolumesMensal(){ renderMonthlyChart('volumesMensal','chartVolumesMensal', rs=>sum(rs,r=>r.vols), PALETTE.sky, v=>fmtNum(v), v=>fmtNum(v)+' volumes'); }
+
   function renderChartFrete(f){
     destroyChart('frete');
     const byDate = {};
@@ -339,15 +398,13 @@
     const labels = Object.keys(byDate).sort();
     const data = labels.map(d=>byDate[d]);
     const ctx = document.getElementById('chartFrete').getContext('2d');
-    const grad = ctx.createLinearGradient(0,0,0,280);
-    grad.addColorStop(0,'rgba(91,110,245,0.32)');
-    grad.addColorStop(1,'rgba(91,110,245,0.0)');
+    const grad = 'rgba(74,124,174,0.14)';
     charts.frete = new Chart(ctx,{
       type:'line',
-      data:{ labels: labels.map(fmtDate), datasets:[{ data, borderColor:PALETTE.accent, backgroundColor:grad, borderWidth:2.5, pointRadius:2.5, pointBackgroundColor:PALETTE.accent, pointBorderColor:'#0A0A0A', tension:0.35, fill:true }]},
+      data:{ labels: labels.map(fmtDate), datasets:[{ data, borderColor:PALETTE.accent, backgroundColor:grad, borderWidth:2.5, pointRadius:2.5, pointBackgroundColor:PALETTE.accent, pointBorderColor:'#101A2C', pointBorderWidth:1.5, pointHoverRadius:5, tension:0.35, fill:true }]},
       options:{
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:22 } },
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtBRLfull(c.parsed.y) }, backgroundColor:'#16213A', borderColor:PALETTE.accent, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtBRLfull(c.parsed.y) }, backgroundColor:'#0B1424', borderColor:PALETTE.accent, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtBRL(v), maxItems:18 } },
         scales:{
           x:{ grid:{display:false}, ticks:{maxRotation:0, autoSkip:true, maxTicksLimit:9} },
@@ -365,11 +422,22 @@
     const ctx = document.getElementById('chartMeta').getContext('2d');
     charts.meta = new Chart(ctx,{
       type:'doughnut',
-      data:{ labels:['Atendeu a meta','Não atendeu','Indefinido'], datasets:[{ data:[ok,no,na], backgroundColor:[PALETTE.accent2, PALETTE.danger, PALETTE.faint], borderColor:PALETTE.panel, borderWidth:3, hoverOffset:6 }]},
+      data:{ labels:['Atendeu a meta','Não atendeu','Indefinido'], datasets:[{ data:[ok,no,na], backgroundColor:[PALETTE.accent2, PALETTE.danger, PALETTE.faint], borderColor:PALETTE.panel, borderWidth:0, spacing:3, borderRadius:6, hoverOffset:6 }]},
+      plugins:[{
+        id:'centerTotal',
+        afterDraw(c){
+          const a = c.chartArea; if(!a) return;
+          const x = (a.left+a.right)/2, y = (a.top+a.bottom)/2;
+          const cx = c.ctx; cx.save(); cx.textAlign='center'; cx.textBaseline='middle';
+          cx.fillStyle='#F3F6FF'; cx.font='700 20px Inter, sans-serif'; cx.fillText(fmtNum(f.length), x, y-7);
+          cx.fillStyle='#8FA0BA'; cx.font='600 9px Inter, sans-serif'; cx.fillText('VIAGENS', x, y+12);
+          cx.restore();
+        }
+      }],
       options:{
         responsive:true, maintainAspectRatio:false, cutout:'68%',
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } },
-          tooltip:{ backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:14, font:{size:10} } },
+          tooltip:{ backgroundColor:'#0B1424', borderColor:PALETTE.accent2, borderWidth:1, padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } }
       }
     });
@@ -383,12 +451,12 @@
     const ctx = document.getElementById('chartMotorista').getContext('2d');
     charts.motorista = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:22 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent, borderRadius:5, maxBarThickness:22 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#0B1424', borderColor:PALETTE.accent, borderWidth:1, padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtBRL(v) } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far', autoSkip:false } } }
       }
     });
   }
@@ -408,7 +476,7 @@
         ]},
       options:{
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:22 } },
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10 },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:14, font:{size:10} } }, tooltip:{ backgroundColor:'#0B1424', borderWidth:1, padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
         scales:{ x:{ grid:{display:false} }, y:{ grid:{color:PALETTE.grid}, stacked:false } }
       }
@@ -423,10 +491,10 @@
     const ctx = document.getElementById('chartPeso').getContext('2d');
     charts.peso = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:24 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.cyan, borderRadius:5, maxBarThickness:24 }]},
       options:{
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:22 } },
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtNum(c.parsed.y)+' kg' }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=> fmtNum(c.parsed.y)+' kg' }, backgroundColor:'#0B1424', borderColor:PALETTE.cyan, borderWidth:1, padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
         scales:{ x:{ grid:{display:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:0 } }, y:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } } }
       }
@@ -441,12 +509,12 @@
     const ctx = document.getElementById('chartVolumesMotorista').getContext('2d');
     charts.volumesMotorista = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:22 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.violet, borderRadius:5, maxBarThickness:22 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x)+' volumes' }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x)+' volumes' }, backgroundColor:'#0B1424', borderColor:PALETTE.violet, borderWidth:1, padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far', autoSkip:false } } }
       }
     });
   }
@@ -466,12 +534,12 @@
     const ctx = document.getElementById('chartTempoMedioMotorista').getContext('2d');
     charts.tempoMedioMotorista = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:22 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:60 } },
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtHM(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, padding:10 },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtHM(c.parsed.x) }, backgroundColor:'#0B1424', borderColor:PALETTE.blue, borderWidth:1, padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtHM(v) } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtHM(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtHM(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far', autoSkip:false } } }
       }
     });
   }
@@ -502,14 +570,14 @@
       data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])),
         datasets:[
           { label:'Operacional (13 · falta de tempo)', data: sorted.map(x=>x[1].op), backgroundColor: PALETTE.danger, borderRadius:5, maxBarThickness:22 },
-          { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:22 }
+          { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.commercial, borderRadius:5, maxBarThickness:22 }
         ]},
       options:{
         indexAxis:'y',
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:36 } },
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:14, font:{size:10} } }, tooltip:{ backgroundColor:'#0B1424', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } },
           vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true, ticks:{ crossAlign:'far' } } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true, ticks:{ crossAlign:'far', autoSkip:false } } }
       }
     });
   }
@@ -536,7 +604,7 @@
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:24 } },
         plugins:{
           legend:{display:false},
-          tooltip:{ callbacks:{ label:(c)=> `Performance: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
+          tooltip:{ callbacks:{ label:(c)=> `Performance: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#0B1424', borderColor:PALETTE.accent2, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtPct(v) }
         },
         scales:{
@@ -566,12 +634,12 @@
     const ctx = document.getElementById('chartCumprimentoMeta').getContext('2d');
     charts.cumprimentoMeta = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map(x=> x[1]<0.96 ? PALETTE.danger : PALETTE.accent3), borderRadius:5, maxBarThickness:24 }]},
+      data:{ labels: sorted.map((x,i)=>rankLabel(i,x[0])), datasets:[{ data: sorted.map(x=>x[1]), backgroundColor: sorted.map(x=> x[1]<0.96 ? PALETTE.danger : PALETTE.accent2), borderRadius:5, maxBarThickness:24 }]},
       options:{
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:24 } },
         plugins:{
           legend:{display:false},
-          tooltip:{ callbacks:{ label:(c)=> `Cumprimento de meta: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#16213A', borderColor:PALETTE.accent3, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
+          tooltip:{ callbacks:{ label:(c)=> `Cumprimento de meta: ${fmtPct(c.parsed.y)}` }, backgroundColor:'#0B1424', borderColor:PALETTE.accent2, borderWidth:1, titleColor:'#fff', bodyColor:'#fff', padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtPct(v) }
         },
         scales:{
@@ -625,12 +693,12 @@
     const ctx = document.getElementById('chartProdutividadeRota').getContext('2d');
     charts.produtividadeRota = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.entregasPorHora), backgroundColor: PALETTE.accent2, borderRadius:5, maxBarThickness:16 }]},
+      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.entregasPorHora), backgroundColor: PALETTE.sky, borderRadius:5, maxBarThickness:16 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x,2)+' entregas/h' }, backgroundColor:'#16213A', borderColor:PALETTE.accent2, borderWidth:1, padding:10 },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtNum(c.parsed.x,2)+' entregas/h' }, backgroundColor:'#0B1424', borderColor:PALETTE.sky, borderWidth:1, padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtNum(v,2) } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v,1) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtNum(v,1) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far', autoSkip:false } } }
       }
     });
   }
@@ -642,12 +710,12 @@
     const ctx = document.getElementById('chartFreteRota').getContext('2d');
     charts.freteRota = new Chart(ctx,{
       type:'bar',
-      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.valorFrete), backgroundColor: PALETTE.blue, borderRadius:5, maxBarThickness:16 }]},
+      data:{ labels: sorted.map((s,i)=>rankLabel(i,rotaLabel(s.rota))), datasets:[{ data: sorted.map(s=>s.valorFrete), backgroundColor: PALETTE.accent, borderRadius:5, maxBarThickness:16 }]},
       options:{
         indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:56 } },
-        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#16213A', borderColor:PALETTE.blue, borderWidth:1, padding:10 },
+        plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:(c)=>fmtBRLfull(c.parsed.x) }, backgroundColor:'#0B1424', borderColor:PALETTE.accent, borderWidth:1, padding:10 },
           vitlogDataLabels:{ formatter:(v)=>fmtBRL(v) } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far' } } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, ticks:{ callback:(v)=>fmtBRL(v) } }, y:{ grid:{display:false}, ticks:{ crossAlign:'far', autoSkip:false } } }
       }
     });
   }
@@ -713,14 +781,14 @@
       data:{ labels: sorted.map((x,i)=>rankLabel(i,rotaLabel(x[0]))),
         datasets:[
           { label:'Operacional (13 · falta de tempo)', data: sorted.map(x=>x[1].op), backgroundColor: PALETTE.danger, borderRadius:5, maxBarThickness:16 },
-          { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.accent3, borderRadius:5, maxBarThickness:16 }
+          { label:'Comercial (demais códigos)', data: sorted.map(x=>x[1].com), backgroundColor: PALETTE.commercial, borderRadius:5, maxBarThickness:16 }
         ]},
       options:{
         indexAxis:'y',
         responsive:true, maintainAspectRatio:false, layout:{ padding:{ right:36 } },
-        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:16, font:{size:11.5} } }, tooltip:{ backgroundColor:'#16213A', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10, padding:14, font:{size:10} } }, tooltip:{ backgroundColor:'#0B1424', borderWidth:1, padding:10, callbacks:{ label:(c)=> `${c.dataset.label}: ${fmtNum(c.parsed.x)}` } },
           vitlogDataLabels:{ formatter:(v)=>fmtNum(v) } },
-        scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true, ticks:{ crossAlign:'far' } } }
+        scales:{ x:{ grid:{color:PALETTE.grid}, stacked:true, ticks:{ stepSize:1, precision:0 } }, y:{ grid:{display:false}, stacked:true, ticks:{ crossAlign:'far', autoSkip:false } } }
       }
     });
   }
@@ -964,11 +1032,103 @@
     });
   }
 
+  // ---------- Ticker informativo (topo) ----------
+  // Faixa rolante com os principais números do recorte atual. Só LÊ os dados já filtrados
+  // (mesmas regras dos KPIs); não altera filtros, cálculos nem estado. Reage a qualquer filtro.
+  let tickerHTML = '';
+  function tickerItem(label, valueHtml, noteHtml){
+    return `<span class="ticker-item"><span class="t-label">${label}</span><span class="t-value">${valueHtml}</span>${noteHtml ? `<span class="t-note">${noteHtml}</span>` : ''}</span>`;
+  }
+  function tickerStatus(pct){
+    return pct >= TARGET_PCT ? '<span class="t-up">▲ na meta</span>' : '<span class="t-down">▼ abaixo de 96%</span>';
+  }
+  function topEntry(obj, valueFn){
+    let best = null;
+    Object.entries(obj).forEach(([k,v])=>{ const val = valueFn(v); if(best===null || val>best.val) best = { key:k, val }; });
+    return best;
+  }
+  function buildTickerItems(f){
+    if(f.length === 0){
+      return [ tickerItem('Sem dados', 'Nenhum registro corresponde aos filtros atuais', `${fmtNum(RAW.length)} registros na base`) ];
+    }
+    const items = [];
+    const totalFrete = sum(f,r=>r.valorFrete);
+    const totalPeso = sum(f,r=>r.peso);
+    const totalVolumes = sum(f,r=>r.vols);
+    const totalEntregas = sum(f,r=>r.entregas);
+    const totalRealizadas = sum(f,r=>r.realizadas);
+    const taxaSucesso = totalEntregas>0 ? totalRealizadas/totalEntregas : 0;
+    const metaValidos = f.filter(r=>r.meta==='Atendeu a Meta' || r.meta==='Não Atendeu a Meta');
+    const pctMeta = metaValidos.length>0 ? metaValidos.filter(r=>r.meta==='Atendeu a Meta').length/metaValidos.length : 0;
+    const kmValidos = f.filter(r=>r.kmDia>0);
+    const totalKm = sum(kmValidos,r=>r.kmDia);
+    const occ = occCounts(f);
+
+    items.push(tickerItem('Faturamento em frete', `<span class="t-hi">${fmtBRL(totalFrete)}</span>`, `ticket médio ${fmtBRL(totalFrete/f.length)}`));
+    items.push(tickerItem('Viagens', fmtNum(f.length), `${fmtNum(totalVolumes)} volumes`));
+    items.push(tickerItem('Cumprimento de meta', fmtPct(pctMeta), tickerStatus(pctMeta)));
+    items.push(tickerItem('Performance de entrega', fmtPct(taxaSucesso), tickerStatus(taxaSucesso)));
+    items.push(tickerItem('Peso transportado', `${fmtNum(totalPeso/1000,1)} t`, `${fmtNum(totalKm)} km rodados`));
+    items.push(tickerItem('Ocorrências', fmtNum(occ.total), occ.total>0 ? `${fmtNum(occ.operational)} operacionais · ${fmtNum(occ.commercial)} comerciais` : 'nenhuma no período'));
+
+    // Destaques (líderes do recorte)
+    const byMot = {}; f.forEach(r=>{ byMot[r.motorista] = (byMot[r.motorista]||0) + (r.valorFrete||0); });
+    const topMot = topEntry(byMot, v=>v);
+    if(topMot) items.push(tickerItem('Maior frete', esc(topMot.key), fmtBRL(topMot.val)));
+
+    const byCid = {}; f.forEach(r=>{ byCid[r.cidade] = (byCid[r.cidade]||0) + (r.realizadas||0); });
+    const topCid = topEntry(byCid, v=>v);
+    if(topCid) items.push(tickerItem('Cidade com mais entregas', esc(topCid.key), `${fmtNum(topCid.val)} realizadas`));
+
+    const rotaTop = computeRotaStats(f).filter(s=>s.horas>0).sort((a,b)=>b.entregasPorHora-a.entregasPorHora)[0];
+    if(rotaTop) items.push(tickerItem('Rota mais produtiva', rotaLabel(rotaTop.rota), `${fmtNum(rotaTop.entregasPorHora,2)} entregas/h`));
+
+    const byCode = {};
+    f.forEach(r=>{ getRelevantCodes(r).forEach(c=>{ byCode[c] = (byCode[c]||0)+1; }); });
+    const topCode = topEntry(byCode, v=>v);
+    if(topCode) items.push(tickerItem('Principal ofensor', esc(occLabel(topCode.key)), `${fmtNum(topCode.val)} ocorrência${topCode.val===1?'':'s'}`));
+
+    const byDia = {}; f.forEach(r=>{ byDia[r.data] = (byDia[r.data]||0) + (r.valorFrete||0); });
+    const topDia = topEntry(byDia, v=>v);
+    if(topDia) items.push(tickerItem('Melhor dia de frete', fmtDateFull(topDia.key), fmtBRL(topDia.val)));
+
+    const ultima = f.reduce((m,r)=> r.data>m ? r.data : m, f[0].data);
+    items.push(tickerItem('Última saída', fmtDateFull(ultima), `recorte: ${fmtNum(f.length)} de ${fmtNum(RAW.length)} registros`));
+    return items;
+  }
+  // Repete os itens até cobrir a largura visível e duplica o grupo para o loop ficar contínuo.
+  function layoutTicker(){
+    const track = document.getElementById('tickerTrack'), vp = document.getElementById('tickerViewport');
+    if(!track || !vp || !tickerHTML) return;
+    track.innerHTML = `<div class="ticker-group">${tickerHTML}</div>`;
+    let html = tickerHTML, guard = 0;
+    while(track.firstElementChild.scrollWidth < vp.clientWidth && guard++ < 8){
+      html += tickerHTML;
+      track.firstElementChild.innerHTML = html;
+    }
+    track.innerHTML = `<div class="ticker-group">${html}</div><div class="ticker-group" aria-hidden="true">${html}</div>`;
+    const w = track.firstElementChild.scrollWidth;
+    track.style.setProperty('--ticker-dur', Math.min(220, Math.max(30, w/55)).toFixed(1) + 's'); // ~55 px/s
+  }
+  function renderTicker(f){ tickerHTML = buildTickerItems(f).join(''); layoutTicker(); }
+  (function(){
+    const el = document.getElementById('tickerDate');
+    if(el){
+      const d = new Date();
+      let wd = d.toLocaleDateString('pt-BR',{weekday:'short'}).replace('.','');
+      el.textContent = wd.charAt(0).toUpperCase() + wd.slice(1) + ' · ' + d.toLocaleDateString('pt-BR');
+    }
+    let t; window.addEventListener('resize', ()=>{ clearTimeout(t); t = setTimeout(layoutTicker, 150); });
+  })();
+
   // ---------- Master render ----------
   function render(){
     const f = getFiltered();
     try{ renderKPIs(f); } catch(err){ console.error('Falha nos KPIs:', err); }
     try{ renderTicker(f); } catch(err){ console.error('Falha no ticker:', err); }
+    safeRenderChart(renderChartFreteMensal, f, '#chartFreteMensal');
+    safeRenderChart(renderChartViagensMensal, f, '#chartViagensMensal');
+    safeRenderChart(renderChartVolumesMensal, f, '#chartVolumesMensal');
     safeRenderChart(renderChartFrete, f, '#chartFrete');
     safeRenderChart(renderChartMeta, f, '#chartMeta');
     safeRenderChart(renderChartMotorista, f, '#chartMotorista');
@@ -1079,6 +1239,25 @@
     URL.revokeObjectURL(url);
     showToast(`${rows.length} registro(s) exportado(s) em CSV`);
   });
+
+  // ---------- Imprimir / PDF ----------
+  document.getElementById('printBtn').addEventListener('click', ()=>{
+    Object.values(charts).forEach(c=>{ try{ c.resize(); }catch(e){} });
+    window.print();
+  });
+
+  // ---------- Navegação lateral (destaca a seção visível) ----------
+  (function(){
+    const links = Array.from(document.querySelectorAll('#sbNav a[data-sec]'));
+    const sections = Array.from(document.querySelectorAll('[data-group]'));
+    if(!links.length || !('IntersectionObserver' in window)) return;
+    const setActive = (id)=> links.forEach(a=> a.classList.toggle('active', a.dataset.sec===id));
+    const io = new IntersectionObserver(entries=>{
+      entries.forEach(e=>{ if(e.isIntersecting) setActive(e.target.dataset.group); });
+    }, { rootMargin:'-15% 0px -75% 0px' });
+    sections.forEach(sec=> io.observe(sec));
+    links.forEach(a=> a.addEventListener('click', ()=> setActive(a.dataset.sec)));
+  })();
 
   // ---------- Clock ----------
   function tickClock(){ document.getElementById('clockTime').textContent = new Date().toLocaleTimeString('pt-BR'); }

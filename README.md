@@ -44,7 +44,11 @@ python3 -m http.server 8080
 
 ## Funcionalidades
 
-- **KPIs e ticker** com faturamento, peso, entregas, cumprimento de meta e km rodados.
+- **KPIs** com faturamento, peso, entregas, cumprimento de meta e km rodados.
+- **Ticker informativo superior**: faixa rolante fixa no topo com os números do recorte atual
+  (frete, viagens, meta, performance, peso, ocorrências, líderes por motorista/cidade/rota, principal
+  ofensor, melhor dia e última saída). Acompanha todos os filtros, pausa ao passar o mouse e respeita
+  `prefers-reduced-motion`. A montagem está em `renderTicker()` (`js/app.js`) e o estilo em `.ticker` (`css/styles.css`).
 - **Gráficos** (Chart.js) de frete por dia, cumprimento de meta, faturamento por motorista,
   entregas por cidade, peso por motorista e principais ofensores por ocorrência.
 - **Segmentação por ocorrência**: filtro dedicado por código de ocorrência (com "Sem ocorrência"
@@ -109,7 +113,7 @@ planilha é sempre necessário rodar o script (passo 4 acima) e depois dar F5 na
 
 ## Personalização rápida
 
-- **Cores:** todas as cores estão centralizadas como variáveis CSS no topo de `css/styles.css`
+- **Cores (paleta azul):** todas as cores estão centralizadas como variáveis CSS no topo de `css/styles.css`
   (bloco `:root`) e replicadas no objeto `PALETTE` no início de `js/app.js` (usado pelos gráficos
   Chart.js). Alterar ali reflete em todo o painel.
 - **Rodapé:** textos de fonte/autor ficam no `<footer>` de `index.html`.
